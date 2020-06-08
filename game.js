@@ -1,12 +1,12 @@
 let game;
-let gameOptions = {
+const gameOptions = {
     cellSize: 80,
     boardOffset: {
         x: 160,
         y: 140
     },
-    width: 1920,
-    height: 1080,
+    width: 800,
+    height: 600,
     destroySpeed: 200,
     fallSpeed: 100,
     slideSpeed: 300,
@@ -36,9 +36,12 @@ class MainScene extends Phaser.Scene {
     }
     preload() {
         this.load.spritesheet("tiles", "assets/sprites/tiles.png", {
-            frameWidth: gameOptions.cellSize,
-            frameHeight: gameOptions.cellSize
+            frameWidth: 80,
+            frameHeight: 80
         });
+        for (let animal of ["mouse", "cat", "dog", "lion", "elephant"]) {
+            let img = this.load.image(animal, 'assets/sprites/' + animal + '.png');
+        }
         this.load.bitmapFont("font", "assets/fonts/font.png", "assets/fonts/font.fnt");
     }
     create() {
@@ -57,10 +60,6 @@ class MainScene extends Phaser.Scene {
         this.savedData = localStorage.getItem(gameOptions.localStorageName) == null ? {
             score: 0
         } : JSON.parse(localStorage.getItem(gameOptions.localStorageName));
-        let bestScoreText = this.add.bitmapText(game.config.width - 20, 20, "font", "Best score: " + this.savedData.score.toString(), 60);
-        bestScoreText.setOrigin(1, 0);
-        this.gameText = this.add.bitmapText(game.config.width / 2, game.config.height - 60, "font", "SAMEGAME", 90)
-        this.gameText.setOrigin(0.5, 0.5);
     }
     updateScore() {
         this.scoreText.text = "Score: " + this.score.toString();
@@ -72,6 +71,9 @@ class MainScene extends Phaser.Scene {
                 let gemX = gameOptions.boardOffset.x + gameOptions.cellSize * j + gameOptions.cellSize / 2;
                 let gemY = gameOptions.boardOffset.y + gameOptions.cellSize * i + gameOptions.cellSize / 2;
                 let gem = this.add.sprite(gemX, gemY, "tiles", this.engine.getValueAt(i, j));
+                let toto = this.add.sprite(gemX, gemY, "dog");
+                toto.displayWidth = gameOptions.cellSize;
+                toto.displayHeight = gameOptions.cellSize;
                 this.engine.setCustomData(i, j, gem);
             }
         }
