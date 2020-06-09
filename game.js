@@ -194,6 +194,27 @@ class MainScene extends Phaser.Scene {
     }
 }
 
+class Pawn {
+    constructor(index, animal, team) {
+        this.index = index;
+        this.animal = animal;
+        this.team = team;
+    }
+
+    canBeat(other) {
+        if (other == null) {
+            return true;
+        }
+        if (this.team === other.team) {
+            return false;
+        }
+        if (this.index === 0 && other.index === engineConfig.animals.length - 1) {
+            return true;
+        }
+        return this.index === other.index + 1;
+    }
+}
+
 class GameEngine {
 
     constructor(obj) {
@@ -225,15 +246,9 @@ class GameEngine {
             this.gamePawns[i] = [];
             for (let j = 0; j < this.columns; j++) {
                 if (i === 0) {
-                    this.gamePawns[i][j] = {
-                        "animal": this.animals[j],
-                        "team": "red"
-                    };
+                    this.gamePawns[i][j] = new Pawn(j, this.animals[j], "red");
                 } else if (i === this.rows - 1) {
-                    this.gamePawns[i][j] = {
-                        "animal": this.animals[j],
-                        "team": "blue"
-                    };
+                    this.gamePawns[i][j] = new Pawn(j, this.animals[j], "blue");
                 } else {
                     this.gamePawns[i][j] = null;
                 }
@@ -251,11 +266,6 @@ class GameEngine {
         return this.columns;
     }
 
-    // returns true if the item at (row, column) is empty
-    isEmpty(row, column) {
-        return this.gameArray[row][column].isEmpty;
-    }
-
     getCellAt(row, column) {
         if (!this.validPick(row, column)) {
             return null;
@@ -270,14 +280,37 @@ class GameEngine {
         return this.gamePawns[row][column];
     }
 
-    // returns the custom data of the item at (row, column)
-    getCustomDataAt(row, column) {
-        return this.gameArray[row][column].customData;
-    }
-
     // returns true if the item at (row, column) is a valid pick
     validPick(row, column) {
-        return row >= 0 && row < this.rows && column >= 0 && column < this.columns && this.gameArray[row] != undefined && this.gameArray[row][column] != undefined;
+        return row >= 0 && row < this.rows && column >= 0 && column < this.columns;
+    }
+
+    canMove(startRow, startCol, endRow, endCol, currentColor) {
+        if (!this.isAdjacent(startRow, startCol, endRow, endCol)) {
+            return false;
+        }
+        const startPawn = this.getPawnAt(startRow, startCol);
+        if (startPawn == null) {
+            return false;
+        }
+        const endPawn = this.getPawnAt(endRow, endCol);
+        if (!startPawn.canBeat(endPawn)) {
+            return false;
+        }
+        if (currentColor === -1) {
+            return true
+        }
+        return this.getCellAt(startRow, startCol) === currentColor
+            || this.getCellAt(endRow, endCol) === currentColor;
+    }
+
+    move(startRow, startCol, endRow, endCol) {
+        this.gamePawns[endRow][endCol] = this.getPawnAt(startRow, startCol);
+        this.gamePawns[startRow][startCol] = null;
+    }
+
+    isAdjacent(startRow, startCol, endRow, endCol) {
+        return Math.abs(endRow - startRow) < 1 && Math.abs(endCol - startCol) < 1;
     }
 
     // returns an object with all connected items starting at (row, column)
