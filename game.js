@@ -13,6 +13,13 @@ const gameOptions = {
     localStorageName: "samegame"
 };
 
+const engineConfig = {
+    rows: 5,
+    columns: 5,
+    items: 4,
+    animals: ["mouse", "cat", "dog", "lion", "elephant"]
+};
+
 window.onload = function() {
     let gameConfig = {
         type: Phaser.AUTO,
@@ -39,17 +46,13 @@ class MainScene extends Phaser.Scene {
             frameWidth: 80,
             frameHeight: 80
         });
-        for (let animal of ["mouse", "cat", "dog", "lion", "elephant"]) {
+        for (let animal of engineConfig.animals) {
             let img = this.load.image(animal, 'assets/sprites/' + animal + '.png');
         }
         this.load.bitmapFont("font", "assets/fonts/font.png", "assets/fonts/font.fnt");
     }
     create() {
-        this.engine = new GameEngine({
-            rows: 5,
-            columns: 5,
-            items: 4,
-        });
+        this.engine = new GameEngine(engineConfig);
         this.score = 0;
         this.engine.generateBoard();
         this.drawField();
@@ -65,16 +68,22 @@ class MainScene extends Phaser.Scene {
         this.scoreText.text = "Score: " + this.score.toString();
     }
     drawField() {
-        this.poolArray = [];
-        for(let i = 0; i < this.engine.getRows(); i ++){
-            for(let j = 0; j < this.engine.getColumns(); j ++){
+        for (let i = 0; i < this.engine.getRows(); i ++) {
+            for (let j = 0; j < this.engine.getColumns(); j ++) {
                 let gemX = gameOptions.boardOffset.x + gameOptions.cellSize * j + gameOptions.cellSize / 2;
                 let gemY = gameOptions.boardOffset.y + gameOptions.cellSize * i + gameOptions.cellSize / 2;
-                let gem = this.add.sprite(gemX, gemY, "tiles", this.engine.getValueAt(i, j));
-                let toto = this.add.sprite(gemX, gemY, "dog");
-                toto.displayWidth = gameOptions.cellSize;
-                toto.displayHeight = gameOptions.cellSize;
-                this.engine.setCustomData(i, j, gem);
+                this.add.sprite(gemX, gemY, "tiles", this.engine.getCellAt(i, j));
+                let pawn = this.engine.getPawnAt(i, j);
+                if (pawn != null) {
+                    let animal = this.add.sprite(gemX, gemY, pawn.animal);
+                    if (pawn.team === "red") {
+                        animal.tint = 0xff0000
+                    } else {
+                        animal.tint = 0x0000ff
+                    }
+                    animal.displayWidth = gameOptions.cellSize;
+                    animal.displayHeight = gameOptions.cellSize;
+                }
             }
         }
     }
@@ -92,7 +101,6 @@ class MainScene extends Phaser.Scene {
                     let destroyed = 0;
                     gemsToRemove.forEach(function(gem){
                         destroyed ++;
-                        this.poolArray.push(this.sameGame.getCustomDataAt(gem.row, gem.column))
                         this.tweens.add({
                             targets: this.sameGame.getCustomDataAt(gem.row, gem.column),
                             alpha: 0,
@@ -188,28 +196,46 @@ class MainScene extends Phaser.Scene {
 
 class GameEngine {
 
-    // constructor, simply turns obj information into class properties
     constructor(obj) {
-        if(obj == undefined){
-            obj = {}
-        }
-        this.rows = (obj.rows != undefined) ? obj.rows : 10;
-        this.columns = (obj.columns != undefined) ? obj.columns : 20;
-        this.items = (obj.items != undefined) ? obj.items : 4;
+        this.rows = obj.rows;
+        this.columns = obj.columns;
+        this.items = obj.items;
+        this.animals = obj.animals;
+        this.gameArray = [];
+        this.gamePawns = [];
     }
 
     // generates the game board
     generateBoard() {
-        this.gameArray = [];
-        for(let i = 0; i < this.rows; i ++){
+        this._generateGameArray();
+        this._generateGamePawns();
+    }
+
+    _generateGameArray() {
+        for (let i = 0; i < this.rows; i++) {
             this.gameArray[i] = [];
-            for(let j = 0; j < this.columns; j ++){
-                let randomValue = Math.floor(Math.random() * this.items);
-                this.gameArray[i][j] = {
-                    value: randomValue,
-                    isEmpty: false,
-                    row: i,
-                    column: j
+            for (let j = 0; j < this.columns; j++) {
+                this.gameArray[i][j] = Math.floor(Math.random() * this.items);
+            }
+        }
+    }
+
+    _generateGamePawns() {
+        for (let i = 0; i < this.rows; i++) {
+            this.gamePawns[i] = [];
+            for (let j = 0; j < this.columns; j++) {
+                if (i === 0) {
+                    this.gamePawns[i][j] = {
+                        "animal": this.animals[j],
+                        "team": "red"
+                    };
+                } else if (i === this.rows - 1) {
+                    this.gamePawns[i][j] = {
+                        "animal": this.animals[j],
+                        "team": "blue"
+                    };
+                } else {
+                    this.gamePawns[i][j] = null;
                 }
             }
         }
@@ -230,12 +256,18 @@ class GameEngine {
         return this.gameArray[row][column].isEmpty;
     }
 
-    // returns the value of the item at (row, column), or false if it's not a valid pick
-    getValueAt(row, column) {
-        if(!this.validPick(row, column)) {
-            return false;
+    getCellAt(row, column) {
+        if (!this.validPick(row, column)) {
+            return null;
         }
-        return this.gameArray[row][column].value;
+        return this.gameArray[row][column];
+    }
+
+    getPawnAt(row, column) {
+        if (!this.validPick(row, column)) {
+            return null;
+        }
+        return this.gamePawns[row][column];
     }
 
     // returns the custom data of the item at (row, column)
@@ -246,11 +278,6 @@ class GameEngine {
     // returns true if the item at (row, column) is a valid pick
     validPick(row, column) {
         return row >= 0 && row < this.rows && column >= 0 && column < this.columns && this.gameArray[row] != undefined && this.gameArray[row][column] != undefined;
-    }
-
-    // sets a custom data on the item at (row, column)
-    setCustomData(row, column, customData) {
-        this.gameArray[row][column].customData = customData;
     }
 
     // returns an object with all connected items starting at (row, column)
