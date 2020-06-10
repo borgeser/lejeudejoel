@@ -17,8 +17,11 @@ const engineConfig = {
     rows: 5,
     columns: 5,
     items: 4,
+    teams: ["red", "blue"],
     animals: ["mouse", "cat", "dog", "lion", "elephant"]
 };
+
+let currentPlayer = "red"; // TODO: replace me with a better turn handling
 
 window.onload = function() {
     let gameConfig = {
@@ -100,7 +103,7 @@ class MainScene extends Phaser.Scene {
     }
 
     tileSelect(pointer) {
-        if (!this.canPlay) {
+        if (!this.canPlay || !this.engine.canPlayerMove(currentPlayer)) {
             return;
         }
         let row = Math.floor((pointer.y - gameOptions.boardOffset.y) / gameOptions.cellSize);
@@ -124,11 +127,13 @@ class MainScene extends Phaser.Scene {
             this.move(startRow, startCol, row, col);
             this.engine.move(startRow, startCol, row, col);
             this.engine.selectedPawn = null;
+            this.engine.endTurn();
+            currentPlayer = currentPlayer === "red" ? "blue" : "red";
         }
     }
 
     diceSelect() {
-        if (!this.canPlay || this.engine.diceRolled) {
+        if (!this.canPlay || !this.engine.canPlayerRoll(currentPlayer)) {
             return;
         }
         this.engine.rollDice();
@@ -252,15 +257,19 @@ class Pawn {
 class GameEngine {
 
     constructor(obj) {
+        this.teams = obj.teams;
         this.rows = obj.rows;
         this.columns = obj.columns;
         this.items = obj.items;
         this.animals = obj.animals;
+
+        this._dice = new Dice();
         this.gameArray = [];
         this.gamePawns = [];
-        this._dice = new Dice();
+
         this.selectedPawn = null;
         this.diceRolled = false;
+        this.playingTeam = obj.teams[0];
     }
 
     // generates the game board
@@ -283,9 +292,9 @@ class GameEngine {
             this.gamePawns[i] = [];
             for (let j = 0; j < this.columns; j++) {
                 if (i === 0) {
-                    this.gamePawns[i][j] = new Pawn(j, this.animals[j], "red");
+                    this.gamePawns[i][j] = new Pawn(j, this.animals[j], this.teams[0]);
                 } else if (i === this.rows - 1) {
-                    this.gamePawns[i][j] = new Pawn(j, this.animals[j], "blue");
+                    this.gamePawns[i][j] = new Pawn(j, this.animals[j], this.teams[1]);
                 } else {
                     this.gamePawns[i][j] = null;
                 }
@@ -331,6 +340,9 @@ class GameEngine {
         if (startPawn == null) {
             return false;
         }
+        if (startPawn.team !== this.playingTeam) {
+            return false;
+        }
         const endPawn = this.getPawnAt(endRow, endCol);
         if (!startPawn.canBeat(endPawn)) {
             return false;
@@ -358,6 +370,22 @@ class GameEngine {
 
     getDiceValue() {
         return this._dice.value;
+    }
+
+    canPlayerRoll(team) {
+        return team === this.playingTeam && !this.diceRolled;
+    }
+
+    canPlayerMove(team) {
+        return team === this.playingTeam && this.diceRolled;
+    }
+
+    endTurn() {
+        const index = this.teams.indexOf(this.playingTeam);
+        const nextIndex = (index + 1) % this.teams.length;
+        this.playingTeam = this.teams[nextIndex];
+        this.diceRolled = false;
+        this.selectedPawn = null;
     }
 
     // returns an object with all connected items starting at (row, column)
