@@ -54,33 +54,30 @@ class MainScene extends Phaser.Scene {
     create() {
         this.engine = new GameEngine(engineConfig);
         this.score = 0;
+        this.cellSprites = [];
+        this.animalSprites = [];
         this.engine.generateBoard();
         this.drawField();
-        this.canPick = true;
+        this.canPlay = true;
         this.input.on("pointerdown", this.tileSelect, this);
-        this.scoreText = this.add.bitmapText(20, 20, "font", "ccc", 60);
-        this.updateScore();
         this.savedData = localStorage.getItem(gameOptions.localStorageName) == null ? {
             score: 0
         } : JSON.parse(localStorage.getItem(gameOptions.localStorageName));
     }
-    updateScore() {
-        this.scoreText.text = "Score: " + this.score.toString();
-    }
     drawField() {
         for (let i = 0; i < this.engine.getRows(); i ++) {
+            this.cellSprites[i] = [];
+            this.animalSprites[i] = [];
             for (let j = 0; j < this.engine.getColumns(); j ++) {
                 let gemX = gameOptions.boardOffset.x + gameOptions.cellSize * j + gameOptions.cellSize / 2;
                 let gemY = gameOptions.boardOffset.y + gameOptions.cellSize * i + gameOptions.cellSize / 2;
-                this.add.sprite(gemX, gemY, "tiles", this.engine.getCellAt(i, j));
+                this.cellSprites[i][j] = this.add.sprite(gemX, gemY, "tiles", this.engine.getCellAt(i, j));
                 let pawn = this.engine.getPawnAt(i, j);
                 if (pawn != null) {
-                    let animal = this.add.sprite(gemX, gemY, pawn.animal);
-                    if (pawn.team === "red") {
-                        animal.tint = 0xff0000
-                    } else {
-                        animal.tint = 0x0000ff
-                    }
+                    let animal =  this.add.sprite(gemX, gemY, pawn.animal);
+                    animal.depth = 1; // TODO: better handling of depth (with groups)
+                    this.animalSprites[i][j] = animal;
+                    animal.tint = pawn.tint;
                     animal.displayWidth = gameOptions.cellSize;
                     animal.displayHeight = gameOptions.cellSize;
                 }
@@ -88,37 +85,43 @@ class MainScene extends Phaser.Scene {
         }
     }
     tileSelect(pointer) {
-        if(this.canPick){
-            let row = Math.floor((pointer.y - gameOptions.boardOffset.y) / gameOptions.cellSize);
-            let col = Math.floor((pointer.x - gameOptions.boardOffset.x) / gameOptions.cellSize);
-            if(this.sameGame.validPick(row, col) && !this.sameGame.isEmpty(row, col)){
-                let connectedItems = this.sameGame.countConnectedItems(row, col)
-                if(connectedItems > 1){
-                    this.score += (connectedItems * (connectedItems - 1));
-                    this.updateScore();
-                    this.canPick = false;
-                    let gemsToRemove = this.sameGame.listConnectedItems(row, col);
-                    let destroyed = 0;
-                    gemsToRemove.forEach(function(gem){
-                        destroyed ++;
-                        this.tweens.add({
-                            targets: this.sameGame.getCustomDataAt(gem.row, gem.column),
-                            alpha: 0,
-                            duration: gameOptions.destroySpeed,
-                            callbackScope: this,
-                            onComplete: function(){
-                                destroyed --;
-                                if(destroyed == 0){
-                                    this.sameGame.removeConnectedItems(row, col)
-                                    this.makeGemsFall();
-                                }
-                            }
-                        });
-                    }.bind(this))
-                }
+        if (!this.canPlay) {
+            return;
+        }
+        let row = Math.floor((pointer.y - gameOptions.boardOffset.y) / gameOptions.cellSize);
+        let col = Math.floor((pointer.x - gameOptions.boardOffset.x) / gameOptions.cellSize);
+        const targetPawn = this.engine.getPawnAt(row, col);
+        if (this.engine.selectedPawn == null) {
+            if (targetPawn == null) {
+                return;
             }
+            let animalSprite = this.animalSprites[row][col];
+            animalSprite.setTint(0xffffff);
+            this.engine.selectedPawn = { "row": row, "col": col };
+        } else {
+            const startRow = this.engine.selectedPawn.row;
+            const startCol = this.engine.selectedPawn.col;
+            const startPawn = this.engine.getPawnAt(startRow, startCol);
+            if (!this.engine.canMove(startRow, startCol, row, col, this.engine.dice.value)) {
+                return;
+            }
+            this.animalSprites[startRow][startCol].tint = startPawn.tint;
+            this.move(startRow, startCol, row, col);
+            this.engine.move(startRow, startCol, row, col);
+            this.engine.selectedPawn = null;
         }
     }
+
+    move(startRow, startCol, endRow, endCol) {
+        let targetCell = this.cellSprites[endRow][endCol];
+        let startSprite = this.animalSprites[startRow][startCol];
+        startSprite.x = targetCell.x;
+        startSprite.y = targetCell.y;
+        this.animalSprites[startRow][startCol] = null;
+        this.animalSprites[endRow][endCol]?.destroy();
+        this.animalSprites[endRow][endCol] = startSprite;
+    }
+
     makeGemsFall() {
         let movements = this.sameGame.arrangeBoard();
         if(movements.length == 0){
@@ -170,7 +173,7 @@ class MainScene extends Phaser.Scene {
     }
     endOfMove() {
         if(this.sameGame.stillPlayable(2)){
-            this.canPick = true;
+            this.canPlay = true;
         }
         else{
             let bestScore = Math.max(this.score, this.savedData.score);
@@ -201,6 +204,13 @@ class Pawn {
         this.team = team;
     }
 
+    get tint() {
+        if (this.team === "red") {
+            return 0xff0000;
+        }
+        return 0x0000ff;
+    }
+
     canBeat(other) {
         if (other == null) {
             return true;
@@ -224,6 +234,8 @@ class GameEngine {
         this.animals = obj.animals;
         this.gameArray = [];
         this.gamePawns = [];
+        this.dice = new Dice();
+        this.selectedPawn = null;
     }
 
     // generates the game board
@@ -310,7 +322,7 @@ class GameEngine {
     }
 
     isAdjacent(startRow, startCol, endRow, endCol) {
-        return Math.abs(endRow - startRow) < 1 && Math.abs(endCol - startCol) < 1;
+        return Math.abs(endRow - startRow) <= 1 && Math.abs(endCol - startCol) <= 1;
     }
 
     // returns an object with all connected items starting at (row, column)
@@ -525,4 +537,15 @@ class GameEngine {
         return found;
     }
 
+}
+
+class Dice {
+    constructor() {
+        this.faces = [-1, -1, 0, 1, 2, 3];
+        this.value = -1;
+    }
+
+    roll() {
+        this.value = this.faces[Math.floor(Math.random() * this.faces.length)];
+    }
 }
