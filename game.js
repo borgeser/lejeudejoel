@@ -108,9 +108,8 @@ class MainScene extends Phaser.Scene {
         }
         let row = Math.floor((pointer.y - gameOptions.boardOffset.y) / gameOptions.cellSize);
         let col = Math.floor((pointer.x - gameOptions.boardOffset.x) / gameOptions.cellSize);
-        const targetPawn = this.engine.getPawnAt(row, col);
         if (this.engine.selectedPawn == null) {
-            if (targetPawn == null) {
+            if (!this.engine.canSelect(row, col)) {
                 return;
             }
             let animalSprite = this.animalSprites[row][col];
@@ -120,6 +119,12 @@ class MainScene extends Phaser.Scene {
             const startRow = this.engine.selectedPawn.row;
             const startCol = this.engine.selectedPawn.col;
             const startPawn = this.engine.getPawnAt(startRow, startCol);
+            if (startRow === row && startCol === col) {
+                // cancel selection
+                this.animalSprites[startRow][startCol].tint = startPawn.tint;
+                this.engine.selectedPawn = null;
+                return;
+            }
             if (!this.engine.canMove(startRow, startCol, row, col)) {
                 return;
             }
@@ -352,6 +357,11 @@ class GameEngine {
         }
         return this.getCellAt(startRow, startCol) === currentColor
             || this.getCellAt(endRow, endCol) === currentColor;
+    }
+
+    canSelect(row, col) {
+        const pawn = this.getPawnAt(row, col);
+        return pawn != null && pawn.team === this.playingTeam;
     }
 
     move(startRow, startCol, endRow, endCol) {
