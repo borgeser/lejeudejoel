@@ -38,9 +38,11 @@ window.onload = function() {
 };
 
 class MainScene extends Phaser.Scene {
+
     constructor() {
         super("PlayGame");
     }
+
     preload() {
         this.load.spritesheet("tiles", "assets/sprites/tiles.png", {
             frameWidth: 80,
@@ -51,19 +53,23 @@ class MainScene extends Phaser.Scene {
         }
         this.load.bitmapFont("font", "assets/fonts/font.png", "assets/fonts/font.fnt");
     }
+
     create() {
         this.engine = new GameEngine(engineConfig);
         this.score = 0;
         this.cellSprites = [];
         this.animalSprites = [];
+        this.diceSprite = null;
         this.engine.generateBoard();
         this.drawField();
+        this.drawDice();
         this.canPlay = true;
         this.input.on("pointerdown", this.tileSelect, this);
         this.savedData = localStorage.getItem(gameOptions.localStorageName) == null ? {
             score: 0
         } : JSON.parse(localStorage.getItem(gameOptions.localStorageName));
     }
+
     drawField() {
         for (let i = 0; i < this.engine.getRows(); i ++) {
             this.cellSprites[i] = [];
@@ -84,6 +90,15 @@ class MainScene extends Phaser.Scene {
             }
         }
     }
+
+    drawDice() {
+        const x = 1.5 * gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows() + gameOptions.cellSize / 2;
+        const y = gameOptions.boardOffset.y + gameOptions.cellSize * Math.floor(this.engine.getColumns() / 2) + gameOptions.cellSize / 2;
+        const tileIndex = this.engine.getDiceValue() === -1 ? 4 : this.engine.getDiceValue();
+        this.diceSprite = this.add.sprite(x, y, "tiles", tileIndex).setInteractive();
+        this.diceSprite.on('pointerdown', this.diceSelect, this);
+    }
+
     tileSelect(pointer) {
         if (!this.canPlay) {
             return;
@@ -102,7 +117,7 @@ class MainScene extends Phaser.Scene {
             const startRow = this.engine.selectedPawn.row;
             const startCol = this.engine.selectedPawn.col;
             const startPawn = this.engine.getPawnAt(startRow, startCol);
-            if (!this.engine.canMove(startRow, startCol, row, col, this.engine.dice.value)) {
+            if (!this.engine.canMove(startRow, startCol, row, col)) {
                 return;
             }
             this.animalSprites[startRow][startCol].tint = startPawn.tint;
@@ -110,6 +125,15 @@ class MainScene extends Phaser.Scene {
             this.engine.move(startRow, startCol, row, col);
             this.engine.selectedPawn = null;
         }
+    }
+
+    diceSelect() {
+        if (!this.canPlay || this.engine.diceRolled) {
+            return;
+        }
+        this.engine.rollDice();
+        this.diceSprite.destroy();
+        this.drawDice();
     }
 
     move(startRow, startCol, endRow, endCol) {
@@ -234,8 +258,9 @@ class GameEngine {
         this.animals = obj.animals;
         this.gameArray = [];
         this.gamePawns = [];
-        this.dice = new Dice();
+        this._dice = new Dice();
         this.selectedPawn = null;
+        this.diceRolled = false;
     }
 
     // generates the game board
@@ -297,7 +322,8 @@ class GameEngine {
         return row >= 0 && row < this.rows && column >= 0 && column < this.columns;
     }
 
-    canMove(startRow, startCol, endRow, endCol, currentColor) {
+    canMove(startRow, startCol, endRow, endCol) {
+        const currentColor = this.getDiceValue();
         if (!this.isAdjacent(startRow, startCol, endRow, endCol)) {
             return false;
         }
@@ -323,6 +349,15 @@ class GameEngine {
 
     isAdjacent(startRow, startCol, endRow, endCol) {
         return Math.abs(endRow - startRow) <= 1 && Math.abs(endCol - startCol) <= 1;
+    }
+
+    rollDice() {
+        this._dice.roll();
+        this.diceRolled = true;
+    }
+
+    getDiceValue() {
+        return this._dice.value;
     }
 
     // returns an object with all connected items starting at (row, column)
