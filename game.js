@@ -43,7 +43,7 @@ class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.spritesheet("tiles", "assets/sprites/tiles.png", {
+        this.load.spritesheet("tiles", "assets/sprites/tiles.png?v=2", { // TODO: remove version
             frameWidth: 80,
             frameHeight: 80
         });
@@ -62,6 +62,8 @@ class MainScene extends Phaser.Scene {
         this.drawField();
         this.drawDice();
         this.canPlay = true;
+        this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
+        this.refreshCurrentPlayerText();
         this.input.on("pointerdown", this.tileSelect, this);
     }
 
@@ -87,11 +89,22 @@ class MainScene extends Phaser.Scene {
     }
 
     drawDice() {
+        this.diceSprite?.destroy();
         const x = 1.5 * gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows() + gameOptions.cellSize / 2;
         const y = gameOptions.boardOffset.y + gameOptions.cellSize * Math.floor(this.engine.getColumns() / 2) + gameOptions.cellSize / 2;
-        const tileIndex = this.engine.getDiceValue() === -1 ? 4 : this.engine.getDiceValue();
+        const tileIndex = this.getDiceTileIndex(this.engine.getDiceValue());
         this.diceSprite = this.add.sprite(x, y, "tiles", tileIndex).setInteractive();
         this.diceSprite.on('pointerdown', this.diceSelect, this);
+    }
+
+    getDiceTileIndex(diceValue) {
+        if (diceValue == null) {
+            return 5;
+        }
+        if (diceValue === -1) {
+            return 4;
+        }
+        return diceValue;
     }
 
     tileSelect(pointer) {
@@ -123,10 +136,20 @@ class MainScene extends Phaser.Scene {
             this.animalSprites[startRow][startCol].tint = startPawn.tint;
             this.move(startRow, startCol, row, col);
             this.engine.move(startRow, startCol, row, col);
-            this.engine.selectedPawn = null;
             this.engine.endTurn();
-            currentPlayer = currentPlayer === "red" ? "blue" : "red";
+            this.endTurn();
+            this.engine.selectedPawn = null;
         }
+    }
+
+    endTurn() {
+        this.drawDice();
+        this.refreshCurrentPlayerText();
+        currentPlayer = currentPlayer === "red" ? "blue" : "red";
+    }
+
+    refreshCurrentPlayerText() {
+        this.currentPlayerText.text = "Player " + this.engine.playingTeam + ", your turn"
     }
 
     diceSelect() {
@@ -134,7 +157,6 @@ class MainScene extends Phaser.Scene {
             return;
         }
         this.engine.rollDice();
-        this.diceSprite.destroy();
         this.drawDice();
     }
 
@@ -297,6 +319,9 @@ class GameEngine {
     }
 
     getDiceValue() {
+        if (!this.diceRolled) {
+            return null;
+        }
         return this._dice.value;
     }
 
