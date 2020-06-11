@@ -1,3 +1,5 @@
+import {BitmapButton} from "./game-objects/bitmapButton.js";
+
 let game;
 const gameOptions = {
     cellSize: 80,
@@ -30,16 +32,44 @@ window.onload = function() {
             width: gameOptions.width,
             height: gameOptions.height
         },
-        scene: MainScene
+        scene: [CommunicationScene, MainScene]
     };
     game = new Phaser.Game(gameConfig);
     window.focus();
 };
 
+class CommunicationScene extends Phaser.Scene {
+    constructor() {
+        super("CommunicationScene");
+    }
+
+    preload() {
+        this.load.bitmapFont("font", "assets/fonts/font.png", "assets/fonts/font.fnt");
+    }
+
+    create() {
+        this.add.bitmapText(gameOptions.width / 2, 50, "font", "Select playing mode", 20).setOrigin(0.5, 0,5);
+        const localButton = new BitmapButton(this, gameOptions.width / 2, 200, "font", 'Local', 20).setOrigin(0.5, 0,5);
+        this.add.existing(localButton);
+        localButton.on('pointerup', this.local, this);
+        const remoteButton = new BitmapButton(this, gameOptions.width / 2, 250, "font", 'Remote', 20).setOrigin(0.5, 0,5);
+        this.add.existing(remoteButton);
+        remoteButton.on('pointerup', this.remote, this);
+    }
+
+    local() {
+        this.scene.start(MainScene.name);
+    }
+
+    remote() {
+        // TODO: implement
+    }
+}
+
 class MainScene extends Phaser.Scene {
 
     constructor() {
-        super("PlayGame");
+        super("MainScene");
     }
 
     preload() {
