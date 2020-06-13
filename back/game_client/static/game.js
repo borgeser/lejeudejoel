@@ -1,5 +1,7 @@
 import {BitmapButton} from "./game-objects/bitmapButton.js";
 
+const STATIC_ROOT = "/static/"
+
 let game;
 const gameOptions = {
     cellSize: 80,
@@ -44,7 +46,7 @@ class CommunicationScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.bitmapFont("font", "assets/fonts/font.png", "assets/fonts/font.fnt");
+        this.load.bitmapFont("font", STATIC_ROOT + "assets/fonts/font.png", STATIC_ROOT + "assets/fonts/font.fnt");
     }
 
     create() {
@@ -73,14 +75,14 @@ class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.spritesheet("tiles", "assets/sprites/tiles.png?v=2", { // TODO: remove version
+        this.load.spritesheet("tiles", STATIC_ROOT + "assets/sprites/tiles.png", {
             frameWidth: 80,
             frameHeight: 80
         });
         for (let animal of engineConfig.animals) {
-            let img = this.load.image(animal, 'assets/sprites/' + animal + '.png');
+            let img = this.load.image(animal, STATIC_ROOT + 'assets/sprites/' + animal + '.png');
         }
-        this.load.bitmapFont("font", "assets/fonts/font.png", "assets/fonts/font.fnt");
+        this.load.bitmapFont("font", STATIC_ROOT + "assets/fonts/font.png", STATIC_ROOT + "assets/fonts/font.fnt");
     }
 
     create() {
