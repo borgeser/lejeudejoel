@@ -4,6 +4,7 @@ const STATIC_ROOT = "/static/"
 
 let game;
 let mode;
+let engine;
 
 const gameOptions = {
     cellSize: 80,
@@ -56,15 +57,84 @@ class LocalMode {
     setCurrentPlayer(player) {
         this._currentLocalPlayer = player;
     }
+
+    onMove(startX, startY, endX, endY, player) {}
+
+    onDiceRolled(color, player) {}
 }
 
 class RemoteMode {
-    getPlayer() {
+    constructor(myTeam, firstPlayer, roomName) {
+        this._myTeam = myTeam;
+        this._currentPlayer = firstPlayer;
+        this.roomName = roomName;
+    }
 
+    getPlayer() {
+        return this._myTeam;
     }
 
     getCurrentPlayer() {
+        return this._currentPlayer;
+    }
 
+    setCurrentPlayer(player) {
+        this._currentPlayer = player;
+    }
+
+    onMove(startX, startY, endX, endY, player) {
+        if (this.getPlayer() !== player) {
+            // don't resend external event
+            return;
+        }
+    }
+
+    onDiceRolled(color, player) {
+        if (this.getPlayer() !== player) {
+            // don't resend external event
+            return;
+        }
+        this.socket.send(JSON.stringify({
+            player: player,
+            action: 'dice',
+            details: {
+                color: color
+            }
+        }));
+    }
+
+    startWebSocket() {
+        const socket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/ws/game_server/'
+            + this.roomName
+            + '/'
+        );
+        this.socket = socket;
+
+        socket.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            console.log("New event: " + data);
+            if (data.player === this.getPlayer()) {
+                return;
+            }
+            if (data.action === "dice") {
+                return;
+            } else if (data.action === "move") {
+                return;
+            } else {
+                console.log('Unknown action: ' + data.action);
+            }
+        };
+
+        socket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        socket.onerror = function(e) {
+            console.error('Error in socket: ' + e);
+        };
     }
 }
 
@@ -93,7 +163,9 @@ class CommunicationScene extends Phaser.Scene {
     }
 
     remote() {
-        // TODO: implement
+        mode = new RemoteMode("red", "red");
+        mode.startWebSocket();
+        this.scene.start(MainScene.name);
     }
 }
 
@@ -218,6 +290,7 @@ class MainScene extends Phaser.Scene {
             return;
         }
         this.engine.rollDice();
+        mode.onDiceRolled(this.engine.getDiceValue(), mode.getCurrentPlayer());
         this.drawDice();
     }
 
