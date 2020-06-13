@@ -3,6 +3,8 @@ import {BitmapButton} from "./game-objects/bitmapButton.js";
 const STATIC_ROOT = "/static/"
 
 let game;
+let mode;
+
 const gameOptions = {
     cellSize: 80,
     boardOffset: {
@@ -21,8 +23,6 @@ const engineConfig = {
     animals: ["mouse", "cat", "dog", "lion", "elephant"]
 };
 
-let currentPlayer = "red"; // TODO: replace me with a better turn handling
-
 window.onload = function() {
     let gameConfig = {
         type: Phaser.AUTO,
@@ -39,6 +39,34 @@ window.onload = function() {
     game = new Phaser.Game(gameConfig);
     window.focus();
 };
+
+class LocalMode {
+    constructor(firstPlayer) {
+        this._currentLocalPlayer = firstPlayer;
+    }
+
+    getPlayer() {
+        return this._currentLocalPlayer;
+    }
+
+    getCurrentPlayer() {
+        return this._currentLocalPlayer;
+    }
+
+    setCurrentPlayer(player) {
+        this._currentLocalPlayer = player;
+    }
+}
+
+class RemoteMode {
+    getPlayer() {
+
+    }
+
+    getCurrentPlayer() {
+
+    }
+}
 
 class CommunicationScene extends Phaser.Scene {
     constructor() {
@@ -60,6 +88,7 @@ class CommunicationScene extends Phaser.Scene {
     }
 
     local() {
+        mode = new LocalMode("red");
         this.scene.start(MainScene.name);
     }
 
@@ -140,7 +169,7 @@ class MainScene extends Phaser.Scene {
     }
 
     tileSelect(pointer) {
-        if (!this.canPlay || !this.engine.canPlayerMove(currentPlayer)) {
+        if (!this.canPlay || !this.engine.canPlayerMove(mode.getPlayer())) {
             return;
         }
         let row = Math.floor((pointer.y - gameOptions.boardOffset.y) / gameOptions.cellSize);
@@ -177,7 +206,7 @@ class MainScene extends Phaser.Scene {
     endTurn() {
         this.drawDice();
         this.refreshCurrentPlayerText();
-        currentPlayer = currentPlayer === "red" ? "blue" : "red";
+        mode.setCurrentPlayer(mode.getCurrentPlayer() === "red" ? "blue" : "red");
     }
 
     refreshCurrentPlayerText() {
@@ -185,7 +214,7 @@ class MainScene extends Phaser.Scene {
     }
 
     diceSelect() {
-        if (!this.canPlay || !this.engine.canPlayerRoll(currentPlayer)) {
+        if (!this.canPlay || !this.engine.canPlayerRoll(mode.getPlayer())) {
             return;
         }
         this.engine.rollDice();
