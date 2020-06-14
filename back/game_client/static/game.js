@@ -379,7 +379,6 @@ class GameEngine {
         this.gamePawns = [];
 
         this.selectedPawn = null;
-        this._diceRolled = false;
         this.playingTeam = obj.teams[0];
     }
 
@@ -494,34 +493,33 @@ class GameEngine {
 
     rollDice() {
         this._dice.roll();
-        this._diceRolled = true;
     }
 
     getDiceValue() {
-        if (!this._diceRolled) {
-            return null;
-        }
         return this._dice.value;
     }
 
     setDiceValue(value) {
         this._dice.value = value;
-        this._diceRolled = true;
     }
 
     canPlayerRoll(team) {
-        return team === this.playingTeam && !this._diceRolled;
+        return team === this.playingTeam && !this.isDiceRolled();
     }
 
     canPlayerMove(team) {
-        return team === this.playingTeam && this._diceRolled;
+        return team === this.playingTeam && this.isDiceRolled();
+    }
+
+    isDiceRolled() {
+        return this._dice.value != null;
     }
 
     endTurn() {
         const index = this.teams.indexOf(this.playingTeam);
         const nextIndex = (index + 1) % this.teams.length;
         this.playingTeam = this.teams[nextIndex];
-        this._diceRolled = false;
+        this._dice.value = null;
         this.selectedPawn = null;
     }
 }
@@ -529,7 +527,7 @@ class GameEngine {
 class Dice {
     constructor() {
         this.faces = [-1, -1, 0, 1, 2, 3];
-        this.value = -1;
+        this.value = null;
     }
 
     roll() {
