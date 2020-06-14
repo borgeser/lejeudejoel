@@ -83,6 +83,8 @@ class RemoteMode {
         );
         this.socket = socket;
 
+        // TODO: prevent two parallel players of the same kind (red or blue)
+
         socket.onmessage = (e) => {
             console.log("New event: " + e.data);
             const data = JSON.parse(e.data);
@@ -540,6 +542,7 @@ class Dice {
     }
 }
 
+// TODO: try to clean these global variables
 const engine = new GameEngine(engineConfig);
 let game;
 let mode;
