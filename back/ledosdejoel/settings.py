@@ -22,11 +22,15 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = ')#ud^0hzqrv5eu0y3r2#a8#d!11_571i%o*!nybgyjv+2g%gj$'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+if os.environ.get('ENV') == 'DEBUG':
+    DEBUG = True
+else:
+    DEBUG = True
 
-ALLOWED_HOSTS = []
-
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = []
 
 # Application definition
 
@@ -134,3 +138,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static/'),
 ]
+
+if not DEBUG:
+    import django_heroku
+    django_heroku.settings(locals())
