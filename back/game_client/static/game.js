@@ -107,12 +107,13 @@ class RemoteMode {
                     action: 'board',
                     details: {
                         cells: cells,
-                        pawns: pawns
+                        pawns: pawns,
+                        dice: engine.getDiceValue(),
+                        playing_team: engine.playingTeam
                     }
                 }));
             } else if (data.action === "board") {
-                let details = data.details;
-                scene.boardReceived(details.cells, details.pawns);
+                scene.boardReceived(data.details);
             } else {
                 console.log('Unknown action: ' + data.action);
             }
@@ -317,9 +318,13 @@ class MainScene extends Phaser.Scene {
 
     // Socket Event
 
-    boardReceived(cells, pawns) {
-        this.engine.loadBoard(cells, pawns);
+    boardReceived(info) {
+        this.engine.loadBoard(info.cells, info.pawns);
         this._drawField();
+        this.engine.playingTeam = info.playing_team;
+        this._refreshCurrentPlayerText();
+        this.engine.setDiceValue(info.dice);
+        this._drawDice();
         this.canPlay = true;
     }
 
