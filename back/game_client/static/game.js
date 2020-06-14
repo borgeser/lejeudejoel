@@ -3,6 +3,7 @@ const STATIC_ROOT = "/static/";
 let game;
 let mode;
 let scene;
+let engine;
 
 const gameOptions = {
     cellSize: 80,
@@ -62,9 +63,17 @@ class LocalMode {
         this._currentLocalPlayer = player;
     }
 
+    isHost() {
+        return true;
+    }
+
+    // UI Events
+
     onMove(startX, startY, endX, endY, player) {}
 
     onDiceRolled(color, player) {}
+
+    onBoardAsked() {}
 }
 
 class RemoteMode {
@@ -84,6 +93,10 @@ class RemoteMode {
 
     setCurrentPlayer(player) {
         this._currentPlayer = player;
+    }
+
+    isHost() {
+        return this.getPlayer() === "red";
     }
 
     startWebSocket() {
@@ -109,6 +122,23 @@ class RemoteMode {
             } else if (data.action === "move") {
                 let details = data.details;
                 scene.moveFinished(details.before.x, details.before.y, details.after.x, details.after.y);
+            } else if (data.action === "connect") {
+                if (!this.isHost()) {
+                    return;
+                }
+                const cells = engine.exportCells();
+                const pawns = engine.exportPawns();
+                socket.send(JSON.stringify({
+                    player: this.getPlayer(),
+                    action: 'board',
+                    details: {
+                        cells: cells,
+                        pawns: pawns
+                    }
+                }));
+            } else if (data.action === "board") {
+                let details = data.details;
+                scene.boardReceived(details.cells, details.pawns);
             } else {
                 console.log('Unknown action: ' + data.action);
             }
@@ -151,6 +181,13 @@ class RemoteMode {
             }
         }));
     }
+
+    onBoardAsked() {
+        this.socket.send(JSON.stringify({
+            player: this.getPlayer(),
+            action: 'connect'
+        }));
+    }
 }
 
 class MainScene extends Phaser.Scene {
@@ -171,18 +208,32 @@ class MainScene extends Phaser.Scene {
     }
 
     create() {
-        this.engine = new GameEngine(engineConfig);
+        engine = new GameEngine(engineConfig);
+        this.engine = engine;
         this.cellSprites = [];
         this.animalSprites = [];
         this.diceSprite = null;
-        this.engine.generateBoard();
-        this._drawField();
+        this.canPlay = false;
         this._drawDice();
-        this.canPlay = true;
         this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
         this._refreshCurrentPlayerText();
         this.input.on("pointerdown", this._tileSelect, this);
+        if (mode.isHost()) {
+            this._createBoard();
+        } else {
+            this._askForBoard();
+        }
         scene = this;
+    }
+
+    _createBoard() {
+        this.engine.generateBoard();
+        this._drawField();
+        this.canPlay = true;
+    }
+
+    _askForBoard() {
+        mode.onBoardAsked();
     }
 
     _drawField() {
@@ -294,6 +345,12 @@ class MainScene extends Phaser.Scene {
 
     // Socket Event
 
+    boardReceived(cells, pawns) {
+        this.engine.loadBoard(cells, pawns);
+        this._drawField();
+        this.canPlay = true;
+    }
+
     diceRolled(color) {
         this.engine.setDiceValue(color);
         this._drawDice();
@@ -309,10 +366,10 @@ class MainScene extends Phaser.Scene {
 }
 
 class Pawn {
-    constructor(index, animal, team) {
-        this.index = index;
-        this.animal = animal;
-        this.team = team;
+    constructor(params) {
+        this.index = params.index;
+        this.animal = params.animal;
+        this.team = params.team;
     }
 
     get tint() {
@@ -360,6 +417,19 @@ class GameEngine {
         this._generateGamePawns();
     }
 
+    loadBoard(cells, pawns) {
+        this.gameArray = cells;
+        this.gamePawns = pawns.map(row => row.map(pawn => pawn != null ? new Pawn(pawn) : null));
+    }
+
+    exportCells() {
+        return this.gameArray;
+    }
+
+    exportPawns() {
+        return this.gamePawns;
+    }
+
     _generateGameArray() {
         for (let i = 0; i < this.rows; i++) {
             this.gameArray[i] = [];
@@ -374,9 +444,9 @@ class GameEngine {
             this.gamePawns[i] = [];
             for (let j = 0; j < this.columns; j++) {
                 if (i === 0) {
-                    this.gamePawns[i][j] = new Pawn(j, this.animals[j], this.teams[0]);
+                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], team: this.teams[0]});
                 } else if (i === this.rows - 1) {
-                    this.gamePawns[i][j] = new Pawn(j, this.animals[j], this.teams[1]);
+                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], team: this.teams[1]});
                 } else {
                     this.gamePawns[i][j] = null;
                 }
