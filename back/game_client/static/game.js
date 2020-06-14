@@ -1,6 +1,4 @@
-import {BitmapButton} from "./game-objects/bitmapButton.js";
-
-const STATIC_ROOT = "/static/"
+const STATIC_ROOT = "/static/";
 
 let game;
 let mode;
@@ -25,6 +23,12 @@ const engineConfig = {
 };
 
 window.onload = function() {
+    if (!TEAM_NAME || !ROOM_NAME) {
+        mode = new LocalMode("red");
+    } else {
+        mode = new RemoteMode(TEAM_NAME, name, ROOM_NAME);
+        mode.startWebSocket();
+    }
     let gameConfig = {
         type: Phaser.AUTO,
         backgroundColor: 0x222222,
@@ -35,7 +39,7 @@ window.onload = function() {
             width: gameOptions.width,
             height: gameOptions.height
         },
-        scene: [CommunicationScene, MainScene]
+        scene: MainScene
     };
     game = new Phaser.Game(gameConfig);
     window.focus();
@@ -135,37 +139,6 @@ class RemoteMode {
         socket.onerror = function(e) {
             console.error('Error in socket: ' + e);
         };
-    }
-}
-
-class CommunicationScene extends Phaser.Scene {
-    constructor() {
-        super("CommunicationScene");
-    }
-
-    preload() {
-        this.load.bitmapFont("font", STATIC_ROOT + "assets/fonts/font.png", STATIC_ROOT + "assets/fonts/font.fnt");
-    }
-
-    create() {
-        this.add.bitmapText(gameOptions.width / 2, 50, "font", "Select playing mode", 20).setOrigin(0.5, 0,5);
-        const localButton = new BitmapButton(this, gameOptions.width / 2, 200, "font", 'Local', 20).setOrigin(0.5, 0,5);
-        this.add.existing(localButton);
-        localButton.on('pointerup', this.local, this);
-        const remoteButton = new BitmapButton(this, gameOptions.width / 2, 250, "font", 'Remote', 20).setOrigin(0.5, 0,5);
-        this.add.existing(remoteButton);
-        remoteButton.on('pointerup', this.remote, this);
-    }
-
-    local() {
-        mode = new LocalMode("red");
-        this.scene.start(MainScene.name);
-    }
-
-    remote() {
-        mode = new RemoteMode("red", "red");
-        mode.startWebSocket();
-        this.scene.start(MainScene.name);
     }
 }
 
