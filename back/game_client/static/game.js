@@ -1,9 +1,12 @@
 const STATIC_ROOT = "/static/";
 
-let game;
-let mode;
-let scene;
-let engine;
+const engineConfig = {
+    rows: 5,
+    columns: 5,
+    items: 4,
+    teams: ["red", "blue"],
+    animals: ["mouse", "cat", "dog", "lion", "elephant"]
+};
 
 const gameOptions = {
     cellSize: 80,
@@ -15,19 +18,11 @@ const gameOptions = {
     height: 600,
 };
 
-const engineConfig = {
-    rows: 5,
-    columns: 5,
-    items: 4,
-    teams: ["red", "blue"],
-    animals: ["mouse", "cat", "dog", "lion", "elephant"]
-};
-
 window.onload = function() {
     if (!TEAM_NAME || !ROOM_NAME) {
-        mode = new LocalMode("red");
+        mode = new LocalMode();
     } else {
-        mode = new RemoteMode(TEAM_NAME, name, ROOM_NAME);
+        mode = new RemoteMode(TEAM_NAME, ROOM_NAME);
         mode.startWebSocket();
     }
     let gameConfig = {
@@ -47,20 +42,8 @@ window.onload = function() {
 };
 
 class LocalMode {
-    constructor(firstPlayer) {
-        this._currentLocalPlayer = firstPlayer;
-    }
-
     getPlayer() {
-        return this._currentLocalPlayer;
-    }
-
-    getCurrentPlayer() {
-        return this._currentLocalPlayer;
-    }
-
-    setCurrentPlayer(player) {
-        this._currentLocalPlayer = player;
+        return engine.playingTeam;
     }
 
     isHost() {
@@ -77,22 +60,13 @@ class LocalMode {
 }
 
 class RemoteMode {
-    constructor(myTeam, firstPlayer, roomName) {
+    constructor(myTeam, roomName) {
         this._myTeam = myTeam;
-        this._currentPlayer = firstPlayer;
         this.roomName = roomName;
     }
 
     getPlayer() {
         return this._myTeam;
-    }
-
-    getCurrentPlayer() {
-        return this._currentPlayer;
-    }
-
-    setCurrentPlayer(player) {
-        this._currentPlayer = player;
     }
 
     isHost() {
@@ -208,7 +182,6 @@ class MainScene extends Phaser.Scene {
     }
 
     create() {
-        engine = new GameEngine(engineConfig);
         this.engine = engine;
         this.cellSprites = [];
         this.animalSprites = [];
@@ -279,11 +252,10 @@ class MainScene extends Phaser.Scene {
     _endTurn() {
         this._drawDice();
         this._refreshCurrentPlayerText();
-        mode.setCurrentPlayer(mode.getCurrentPlayer() === "red" ? "blue" : "red");
     }
 
     _refreshCurrentPlayerText() {
-        this.currentPlayerText.text = "Player " + this.engine._playingTeam + ", your turn"
+        this.currentPlayerText.text = "Player " + this.engine.playingTeam + ", your turn"
     }
 
     _move(startRow, startCol, endRow, endCol) {
@@ -304,7 +276,7 @@ class MainScene extends Phaser.Scene {
         }
         this.engine.rollDice();
         this._drawDice();
-        mode.onDiceRolled(this.engine.getDiceValue(), mode.getCurrentPlayer());
+        mode.onDiceRolled(this.engine.getDiceValue(), this.engine.playingTeam);
     }
 
     _tileSelect(pointer) {
@@ -408,7 +380,7 @@ class GameEngine {
 
         this.selectedPawn = null;
         this._diceRolled = false;
-        this._playingTeam = obj.teams[0];
+        this.playingTeam = obj.teams[0];
     }
 
     // generates the game board
@@ -492,7 +464,7 @@ class GameEngine {
         if (startPawn == null) {
             return false;
         }
-        if (startPawn.team !== this._playingTeam) {
+        if (startPawn.team !== this.playingTeam) {
             return false;
         }
         const endPawn = this.getPawnAt(endRow, endCol);
@@ -508,7 +480,7 @@ class GameEngine {
 
     canSelect(row, col) {
         const pawn = this.getPawnAt(row, col);
-        return pawn != null && pawn.team === this._playingTeam;
+        return pawn != null && pawn.team === this.playingTeam;
     }
 
     move(startRow, startCol, endRow, endCol) {
@@ -538,17 +510,17 @@ class GameEngine {
     }
 
     canPlayerRoll(team) {
-        return team === this._playingTeam && !this._diceRolled;
+        return team === this.playingTeam && !this._diceRolled;
     }
 
     canPlayerMove(team) {
-        return team === this._playingTeam && this._diceRolled;
+        return team === this.playingTeam && this._diceRolled;
     }
 
     endTurn() {
-        const index = this.teams.indexOf(this._playingTeam);
+        const index = this.teams.indexOf(this.playingTeam);
         const nextIndex = (index + 1) % this.teams.length;
-        this._playingTeam = this.teams[nextIndex];
+        this.playingTeam = this.teams[nextIndex];
         this._diceRolled = false;
         this.selectedPawn = null;
     }
@@ -564,3 +536,8 @@ class Dice {
         this.value = this.faces[Math.floor(Math.random() * this.faces.length)];
     }
 }
+
+const engine = new GameEngine(engineConfig);
+let game;
+let mode;
+let scene;
