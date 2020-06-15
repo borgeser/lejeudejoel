@@ -1,1 +1,1 @@
-web: gunicorn ledosdejoel.wsgi
+web: daphne ledosdejoel.asgi:application
