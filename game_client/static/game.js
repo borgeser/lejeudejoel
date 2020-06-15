@@ -1,5 +1,11 @@
 const STATIC_ROOT = "/static/";
 
+if (window.location.protocol == "https:") {
+  var ws_scheme = "wss://";
+} else {
+  var ws_scheme = "ws://"
+}
+
 const engineConfig = {
     rows: 5,
     columns: 5,
@@ -75,7 +81,7 @@ class RemoteMode {
 
     startWebSocket() {
         const socket = new WebSocket(
-            'ws://'
+            ws_scheme
             + window.location.host
             + '/ws/game_server/'
             + this.roomName
