@@ -1,6 +1,13 @@
-import {BitmapButton} from "./game-objects/bitmapButton.js";
+const STATIC_ROOT = "/static/";
 
-let game;
+const engineConfig = {
+    rows: 5,
+    columns: 5,
+    items: 4,
+    teams: ["red", "blue"],
+    animals: ["mouse", "cat", "dog", "lion", "elephant"]
+};
+
 const gameOptions = {
     cellSize: 80,
     boardOffset: {
@@ -11,17 +18,13 @@ const gameOptions = {
     height: 600,
 };
 
-const engineConfig = {
-    rows: 5,
-    columns: 5,
-    items: 4,
-    teams: ["red", "blue"],
-    animals: ["mouse", "cat", "dog", "lion", "elephant"]
-};
-
-let currentPlayer = "red"; // TODO: replace me with a better turn handling
-
 window.onload = function() {
+    if (!TEAM_NAME || !ROOM_NAME) {
+        mode = new LocalMode();
+    } else {
+        mode = new RemoteMode(TEAM_NAME, ROOM_NAME);
+        mode.startWebSocket();
+    }
     let gameConfig = {
         type: Phaser.AUTO,
         backgroundColor: 0x222222,
@@ -32,37 +35,135 @@ window.onload = function() {
             width: gameOptions.width,
             height: gameOptions.height
         },
-        scene: [CommunicationScene, MainScene]
+        scene: MainScene
     };
     game = new Phaser.Game(gameConfig);
     window.focus();
 };
 
-class CommunicationScene extends Phaser.Scene {
-    constructor() {
-        super("CommunicationScene");
+class LocalMode {
+    getPlayer() {
+        return engine.playingTeam;
     }
 
-    preload() {
-        this.load.bitmapFont("font", "assets/fonts/font.png", "assets/fonts/font.fnt");
+    isHost() {
+        return true;
     }
 
-    create() {
-        this.add.bitmapText(gameOptions.width / 2, 50, "font", "Select playing mode", 20).setOrigin(0.5, 0,5);
-        const localButton = new BitmapButton(this, gameOptions.width / 2, 200, "font", 'Local', 20).setOrigin(0.5, 0,5);
-        this.add.existing(localButton);
-        localButton.on('pointerup', this.local, this);
-        const remoteButton = new BitmapButton(this, gameOptions.width / 2, 250, "font", 'Remote', 20).setOrigin(0.5, 0,5);
-        this.add.existing(remoteButton);
-        remoteButton.on('pointerup', this.remote, this);
+    // UI Events
+
+    onMove(startX, startY, endX, endY, player) {}
+
+    onDiceRolled(color, player) {}
+
+    onBoardAsked() {}
+}
+
+class RemoteMode {
+    constructor(myTeam, roomName) {
+        this._myTeam = myTeam;
+        this.roomName = roomName;
     }
 
-    local() {
-        this.scene.start(MainScene.name);
+    getPlayer() {
+        return this._myTeam;
     }
 
-    remote() {
-        // TODO: implement
+    isHost() {
+        return this.getPlayer() === "red";
+    }
+
+    startWebSocket() {
+        const socket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/ws/game_server/'
+            + this.roomName
+            + '/'
+        );
+        this.socket = socket;
+
+        // TODO: prevent two parallel players of the same kind (red or blue)
+
+        socket.onmessage = (e) => {
+            console.log("New event: " + e.data);
+            const data = JSON.parse(e.data);
+            if (data.player === this.getPlayer()) {
+                // don't forward local events
+                return;
+            }
+            if (data.action === "dice") {
+                let color = data.details.color;
+                scene.diceRolled(color);
+            } else if (data.action === "move") {
+                let details = data.details;
+                scene.moveFinished(details.before.x, details.before.y, details.after.x, details.after.y);
+            } else if (data.action === "connect") {
+                if (!this.isHost()) {
+                    return;
+                }
+                const cells = engine.exportCells();
+                const pawns = engine.exportPawns();
+                socket.send(JSON.stringify({
+                    player: this.getPlayer(),
+                    action: 'board',
+                    details: {
+                        cells: cells,
+                        pawns: pawns,
+                        dice: engine.getDiceValue(),
+                        playing_team: engine.playingTeam
+                    }
+                }));
+            } else if (data.action === "board") {
+                scene.boardReceived(data.details);
+            } else {
+                console.log('Unknown action: ' + data.action);
+            }
+        };
+
+        socket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        socket.onerror = function(e) {
+            console.error('Error in socket: ' + e);
+        };
+    }
+
+    // UI Events
+
+    onDiceRolled(color) {
+        this.socket.send(JSON.stringify({
+            player: this.getPlayer(),
+            action: 'dice',
+            details: {
+                color: color
+            }
+        }));
+    }
+
+    onMove(startX, startY, endX, endY) {
+        this.socket.send(JSON.stringify({
+            player: this.getPlayer(),
+            action: 'move',
+            details: {
+                before: {
+                    x: startX,
+                    y: startY
+                },
+                after: {
+                    x: endX,
+                    y: endY
+                }
+            }
+        }));
+    }
+
+    onBoardAsked() {
+        this.socket.send(JSON.stringify({
+            player: this.getPlayer(),
+            action: 'connect'
+        }));
     }
 }
 
@@ -73,31 +174,45 @@ class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.spritesheet("tiles", "assets/sprites/tiles.png?v=2", { // TODO: remove version
+        this.load.spritesheet("tiles", STATIC_ROOT + "assets/sprites/tiles.png", {
             frameWidth: 80,
             frameHeight: 80
         });
         for (let animal of engineConfig.animals) {
-            let img = this.load.image(animal, 'assets/sprites/' + animal + '.png');
+            let img = this.load.image(animal, STATIC_ROOT + 'assets/sprites/' + animal + '.png');
         }
-        this.load.bitmapFont("font", "assets/fonts/font.png", "assets/fonts/font.fnt");
+        this.load.bitmapFont("font", STATIC_ROOT + "assets/fonts/font.png", STATIC_ROOT + "assets/fonts/font.fnt");
     }
 
     create() {
-        this.engine = new GameEngine(engineConfig);
+        this.engine = engine;
         this.cellSprites = [];
         this.animalSprites = [];
         this.diceSprite = null;
-        this.engine.generateBoard();
-        this.drawField();
-        this.drawDice();
-        this.canPlay = true;
+        this.canPlay = false;
+        this._drawDice();
         this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
-        this.refreshCurrentPlayerText();
-        this.input.on("pointerdown", this.tileSelect, this);
+        this._refreshCurrentPlayerText();
+        this.input.on("pointerdown", this._tileSelect, this);
+        if (mode.isHost()) {
+            this._createBoard();
+        } else {
+            this._askForBoard();
+        }
+        scene = this;
     }
 
-    drawField() {
+    _createBoard() {
+        this.engine.generateBoard();
+        this._drawField();
+        this.canPlay = true;
+    }
+
+    _askForBoard() {
+        mode.onBoardAsked();
+    }
+
+    _drawField() {
         for (let i = 0; i < this.engine.getRows(); i ++) {
             this.cellSprites[i] = [];
             this.animalSprites[i] = [];
@@ -118,16 +233,16 @@ class MainScene extends Phaser.Scene {
         }
     }
 
-    drawDice() {
+    _drawDice() {
         this.diceSprite?.destroy();
         const x = 1.5 * gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows() + gameOptions.cellSize / 2;
         const y = gameOptions.boardOffset.y + gameOptions.cellSize * Math.floor(this.engine.getColumns() / 2) + gameOptions.cellSize / 2;
-        const tileIndex = this.getDiceTileIndex(this.engine.getDiceValue());
+        const tileIndex = this._getDiceTileIndex(this.engine.getDiceValue());
         this.diceSprite = this.add.sprite(x, y, "tiles", tileIndex).setInteractive();
-        this.diceSprite.on('pointerdown', this.diceSelect, this);
+        this.diceSprite.on('pointerdown', this._diceSelect, this);
     }
 
-    getDiceTileIndex(diceValue) {
+    _getDiceTileIndex(diceValue) {
         if (diceValue == null) {
             return 5;
         }
@@ -137,8 +252,38 @@ class MainScene extends Phaser.Scene {
         return diceValue;
     }
 
-    tileSelect(pointer) {
-        if (!this.canPlay || !this.engine.canPlayerMove(currentPlayer)) {
+    _endTurn() {
+        this._drawDice();
+        this._refreshCurrentPlayerText();
+    }
+
+    _refreshCurrentPlayerText() {
+        this.currentPlayerText.text = "Player " + this.engine.playingTeam + ", your turn"
+    }
+
+    _move(startRow, startCol, endRow, endCol) {
+        let targetCell = this.cellSprites[endRow][endCol];
+        let startSprite = this.animalSprites[startRow][startCol];
+        startSprite.x = targetCell.x;
+        startSprite.y = targetCell.y;
+        this.animalSprites[startRow][startCol] = null;
+        this.animalSprites[endRow][endCol]?.destroy();
+        this.animalSprites[endRow][endCol] = startSprite;
+    }
+
+    // UI Event
+
+    _diceSelect() {
+        if (!this.canPlay || !this.engine.canPlayerRoll(mode.getPlayer())) {
+            return;
+        }
+        this.engine.rollDice();
+        this._drawDice();
+        mode.onDiceRolled(this.engine.getDiceValue(), this.engine.playingTeam);
+    }
+
+    _tileSelect(pointer) {
+        if (!this.canPlay || !this.engine.canPlayerMove(mode.getPlayer())) {
             return;
         }
         let row = Math.floor((pointer.y - gameOptions.boardOffset.y) / gameOptions.cellSize);
@@ -164,48 +309,46 @@ class MainScene extends Phaser.Scene {
                 return;
             }
             this.animalSprites[startRow][startCol].tint = startPawn.tint;
-            this.move(startRow, startCol, row, col);
+            this._move(startRow, startCol, row, col);
             this.engine.move(startRow, startCol, row, col);
             this.engine.endTurn();
-            this.endTurn();
+            this._endTurn();
             this.engine.selectedPawn = null;
+            mode.onMove(startRow, startCol, row, col);
         }
     }
 
-    endTurn() {
-        this.drawDice();
-        this.refreshCurrentPlayerText();
-        currentPlayer = currentPlayer === "red" ? "blue" : "red";
+    // Socket Event
+
+    boardReceived(info) {
+        this.engine.loadBoard(info.cells, info.pawns);
+        this._drawField();
+        this.engine.playingTeam = info.playing_team;
+        this._refreshCurrentPlayerText();
+        this.engine.setDiceValue(info.dice);
+        this._drawDice();
+        this.canPlay = true;
     }
 
-    refreshCurrentPlayerText() {
-        this.currentPlayerText.text = "Player " + this.engine.playingTeam + ", your turn"
+    diceRolled(color) {
+        this.engine.setDiceValue(color);
+        this._drawDice();
     }
 
-    diceSelect() {
-        if (!this.canPlay || !this.engine.canPlayerRoll(currentPlayer)) {
-            return;
-        }
-        this.engine.rollDice();
-        this.drawDice();
+    moveFinished(startRow, startCol, endRow, endCol) {
+        this._move(startRow, startCol, endRow, endCol);
+        this.engine.move(startRow, startCol, endRow, endCol);
+        this.engine.endTurn();
+        this._endTurn();
     }
 
-    move(startRow, startCol, endRow, endCol) {
-        let targetCell = this.cellSprites[endRow][endCol];
-        let startSprite = this.animalSprites[startRow][startCol];
-        startSprite.x = targetCell.x;
-        startSprite.y = targetCell.y;
-        this.animalSprites[startRow][startCol] = null;
-        this.animalSprites[endRow][endCol]?.destroy();
-        this.animalSprites[endRow][endCol] = startSprite;
-    }
 }
 
 class Pawn {
-    constructor(index, animal, team) {
-        this.index = index;
-        this.animal = animal;
-        this.team = team;
+    constructor(params) {
+        this.index = params.index;
+        this.animal = params.animal;
+        this.team = params.team;
     }
 
     get tint() {
@@ -243,7 +386,6 @@ class GameEngine {
         this.gamePawns = [];
 
         this.selectedPawn = null;
-        this.diceRolled = false;
         this.playingTeam = obj.teams[0];
     }
 
@@ -251,6 +393,19 @@ class GameEngine {
     generateBoard() {
         this._generateGameArray();
         this._generateGamePawns();
+    }
+
+    loadBoard(cells, pawns) {
+        this.gameArray = cells;
+        this.gamePawns = pawns.map(row => row.map(pawn => pawn != null ? new Pawn(pawn) : null));
+    }
+
+    exportCells() {
+        return this.gameArray;
+    }
+
+    exportPawns() {
+        return this.gamePawns;
     }
 
     _generateGameArray() {
@@ -267,9 +422,9 @@ class GameEngine {
             this.gamePawns[i] = [];
             for (let j = 0; j < this.columns; j++) {
                 if (i === 0) {
-                    this.gamePawns[i][j] = new Pawn(j, this.animals[j], this.teams[0]);
+                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], team: this.teams[0]});
                 } else if (i === this.rows - 1) {
-                    this.gamePawns[i][j] = new Pawn(j, this.animals[j], this.teams[1]);
+                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], team: this.teams[1]});
                 } else {
                     this.gamePawns[i][j] = null;
                 }
@@ -345,29 +500,33 @@ class GameEngine {
 
     rollDice() {
         this._dice.roll();
-        this.diceRolled = true;
     }
 
     getDiceValue() {
-        if (!this.diceRolled) {
-            return null;
-        }
         return this._dice.value;
     }
 
+    setDiceValue(value) {
+        this._dice.value = value;
+    }
+
     canPlayerRoll(team) {
-        return team === this.playingTeam && !this.diceRolled;
+        return team === this.playingTeam && !this.isDiceRolled();
     }
 
     canPlayerMove(team) {
-        return team === this.playingTeam && this.diceRolled;
+        return team === this.playingTeam && this.isDiceRolled();
+    }
+
+    isDiceRolled() {
+        return this._dice.value != null;
     }
 
     endTurn() {
         const index = this.teams.indexOf(this.playingTeam);
         const nextIndex = (index + 1) % this.teams.length;
         this.playingTeam = this.teams[nextIndex];
-        this.diceRolled = false;
+        this._dice.value = null;
         this.selectedPawn = null;
     }
 }
@@ -375,10 +534,16 @@ class GameEngine {
 class Dice {
     constructor() {
         this.faces = [-1, -1, 0, 1, 2, 3];
-        this.value = -1;
+        this.value = null;
     }
 
     roll() {
         this.value = this.faces[Math.floor(Math.random() * this.faces.length)];
     }
 }
+
+// TODO: try to clean these global variables
+const engine = new GameEngine(engineConfig);
+let game;
+let mode;
+let scene;

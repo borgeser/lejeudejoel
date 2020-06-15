@@ -1,0 +1,5 @@
+django
+channels
+channels_redis
+gunicorn
+django-heroku
