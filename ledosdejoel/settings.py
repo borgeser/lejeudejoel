@@ -25,7 +25,7 @@ SECRET_KEY = ')#ud^0hzqrv5eu0y3r2#a8#d!11_571i%o*!nybgyjv+2g%gj$'
 if os.environ.get('ENV') == 'DEBUG':
     DEBUG = True
 else:
-    DEBUG = True
+    DEBUG = False
 
 if DEBUG:
     ALLOWED_HOSTS = ['*']
