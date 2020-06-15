@@ -3,4 +3,5 @@ channels
 channels_redis
 gunicorn
 daphne
+python-dotenv
 django-heroku
