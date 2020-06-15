@@ -11,9 +11,12 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
 import os
+import django_heroku
 from dotenv import load_dotenv
 
+# Load env
 load_dotenv()
+
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -142,6 +145,6 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static/'),
 ]
 
-if not DEBUG:
-    import django_heroku
-    django_heroku.settings(locals())
+
+# Activate Django-Heroku.
+django_heroku.settings(locals())
