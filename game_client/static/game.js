@@ -64,6 +64,8 @@ class LocalMode {
     onDiceRolled(color, player) {}
 
     onBoardAsked() {}
+
+    onBoardCreated() {}
 }
 
 class RemoteMode {
@@ -212,8 +214,8 @@ class MainScene extends Phaser.Scene {
             this._askForBoard();
         }
         this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
-        this._refreshCurrentPlayerText();
-        this.add.bitmapText(gameOptions.boardOffset.x, 70, "font", "My color is " + mode.getPlayer(), 20);
+        this.myPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 70, "font", "", 20);
+        this._refreshPlayersTexts();
         this.input.on("pointerdown", this._tileSelect, this);
         scene = this;
     }
@@ -271,10 +273,11 @@ class MainScene extends Phaser.Scene {
 
     _endTurn() {
         this._drawDice();
-        this._refreshCurrentPlayerText();
+        this._refreshPlayersTexts();
     }
 
-    _refreshCurrentPlayerText() {
+    _refreshPlayersTexts() {
+        this.myPlayerText.text = "My color is " + mode.getPlayer();
         if (this.engine.playingTeam != null) {
             this.currentPlayerText.text = "Player " + this.engine.playingTeam + ", your turn";
         } else {
@@ -345,7 +348,7 @@ class MainScene extends Phaser.Scene {
         this.engine.loadBoard(info.cells, info.pawns);
         this._drawField();
         this.engine.playingTeam = info.playing_team;
-        this._refreshCurrentPlayerText();
+        this._refreshPlayersTexts();
         this.engine.setDiceValue(info.dice);
         this._drawDice();
         this.canPlay = true;
