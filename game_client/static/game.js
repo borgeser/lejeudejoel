@@ -206,14 +206,14 @@ class MainScene extends Phaser.Scene {
         this.diceSprite = null;
         this.canPlay = false;
         this._drawDice();
-        this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
-        this._refreshCurrentPlayerText();
-        this.input.on("pointerdown", this._tileSelect, this);
         if (mode.isHost()) {
             this._createBoard();
         } else {
             this._askForBoard();
         }
+        this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
+        this._refreshCurrentPlayerText();
+        this.input.on("pointerdown", this._tileSelect, this);
         scene = this;
     }
 
@@ -274,7 +274,11 @@ class MainScene extends Phaser.Scene {
     }
 
     _refreshCurrentPlayerText() {
-        this.currentPlayerText.text = "Player " + this.engine.playingTeam + ", your turn"
+        if (this.engine.playingTeam != null) {
+            this.currentPlayerText.text = "Player " + this.engine.playingTeam + ", your turn";
+        } else {
+            this.currentPlayerText.text = "Waiting for other player...";
+        }
     }
 
     _move(startRow, startCol, endRow, endCol) {
@@ -402,13 +406,14 @@ class GameEngine {
         this.gamePawns = [];
 
         this.selectedPawn = null;
-        this.playingTeam = obj.teams[0];
+        this.playingTeam = null;
     }
 
     // generates the game board
     generateBoard() {
         this._generateGameArray();
         this._generateGamePawns();
+        this.playingTeam = this.teams[0];
     }
 
     loadBoard(cells, pawns) {
