@@ -109,18 +109,7 @@ class RemoteMode {
                 if (!this.isHost()) {
                     return;
                 }
-                const cells = engine.exportCells();
-                const pawns = engine.exportPawns();
-                socket.send(JSON.stringify({
-                    player: this.getPlayer(),
-                    action: 'board',
-                    details: {
-                        cells: cells,
-                        pawns: pawns,
-                        dice: engine.getDiceValue(),
-                        playing_team: engine.playingTeam
-                    }
-                }));
+                this.sendBoard();
             } else if (data.action === "board") {
                 scene.boardReceived(data.details);
             } else {
@@ -135,6 +124,21 @@ class RemoteMode {
         socket.onerror = function(e) {
             console.error('Error in socket: ' + e);
         };
+    }
+
+    sendBoard() {
+        const cells = engine.exportCells();
+        const pawns = engine.exportPawns();
+        this.socket.send(JSON.stringify({
+            player: this.getPlayer(),
+            action: 'board',
+            details: {
+                cells: cells,
+                pawns: pawns,
+                dice: engine.getDiceValue(),
+                playing_team: engine.playingTeam
+            }
+        }));
     }
 
     // UI Events
@@ -171,6 +175,10 @@ class RemoteMode {
             player: this.getPlayer(),
             action: 'connect'
         }));
+    }
+
+    onBoardCreated() {
+        this.sendBoard();
     }
 }
 
@@ -213,6 +221,7 @@ class MainScene extends Phaser.Scene {
         this.engine.generateBoard();
         this._drawField();
         this.canPlay = true;
+        mode.onBoardCreated();
     }
 
     _askForBoard() {
