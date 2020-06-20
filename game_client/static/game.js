@@ -213,6 +213,7 @@ class MainScene extends Phaser.Scene {
         }
         this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
         this._refreshCurrentPlayerText();
+        this.add.bitmapText(gameOptions.boardOffset.x, 70, "font", "My color is " + mode.getPlayer(), 20);
         this.input.on("pointerdown", this._tileSelect, this);
         scene = this;
     }
