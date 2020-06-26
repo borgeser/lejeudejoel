@@ -286,13 +286,21 @@ class MainScene extends Phaser.Scene {
     }
 
     _move(startRow, startCol, endRow, endCol) {
+        this.canPlay = false;
         let targetCell = this.cellSprites[endRow][endCol];
         let startSprite = this.animalSprites[startRow][startCol];
-        startSprite.x = targetCell.x;
-        startSprite.y = targetCell.y;
-        this.animalSprites[startRow][startCol] = null;
-        this.animalSprites[endRow][endCol]?.destroy();
-        this.animalSprites[endRow][endCol] = startSprite;
+        this.tweens.add({
+            targets: startSprite,
+            x: targetCell.x,
+            y: targetCell.y,
+            duration: 500,
+            onComplete: () => {
+                this.animalSprites[startRow][startCol] = null;
+                this.animalSprites[endRow][endCol]?.destroy();
+                this.animalSprites[endRow][endCol] = startSprite;
+                this.canPlay = true;
+            }
+        });
     }
 
     // UI Event
