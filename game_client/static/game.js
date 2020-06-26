@@ -1,9 +1,10 @@
 const STATIC_ROOT = "/static/";
 
-if (window.location.protocol == "https:") {
-  var ws_scheme = "wss://";
+let WS_SCHEME;
+if (window.location.protocol === "https:") {
+    WS_SCHEME = "wss://";
 } else {
-  var ws_scheme = "ws://"
+    WS_SCHEME = "ws://"
 }
 
 const engineConfig = {
@@ -63,6 +64,8 @@ class LocalMode {
     onDiceRolled(color, player) {}
 
     onBoardAsked() {}
+
+    onBoardCreated() {}
 }
 
 class RemoteMode {
@@ -81,7 +84,7 @@ class RemoteMode {
 
     startWebSocket() {
         const socket = new WebSocket(
-            ws_scheme
+            WS_SCHEME
             + window.location.host
             + '/ws/game_server/'
             + this.roomName
@@ -108,18 +111,7 @@ class RemoteMode {
                 if (!this.isHost()) {
                     return;
                 }
-                const cells = engine.exportCells();
-                const pawns = engine.exportPawns();
-                socket.send(JSON.stringify({
-                    player: this.getPlayer(),
-                    action: 'board',
-                    details: {
-                        cells: cells,
-                        pawns: pawns,
-                        dice: engine.getDiceValue(),
-                        playing_team: engine.playingTeam
-                    }
-                }));
+                this.sendBoard();
             } else if (data.action === "board") {
                 scene.boardReceived(data.details);
             } else {
@@ -134,6 +126,21 @@ class RemoteMode {
         socket.onerror = function(e) {
             console.error('Error in socket: ' + e);
         };
+    }
+
+    sendBoard() {
+        const cells = engine.exportCells();
+        const pawns = engine.exportPawns();
+        this.socket.send(JSON.stringify({
+            player: this.getPlayer(),
+            action: 'board',
+            details: {
+                cells: cells,
+                pawns: pawns,
+                dice: engine.getDiceValue(),
+                playing_team: engine.playingTeam
+            }
+        }));
     }
 
     // UI Events
@@ -171,6 +178,10 @@ class RemoteMode {
             action: 'connect'
         }));
     }
+
+    onBoardCreated() {
+        this.sendBoard();
+    }
 }
 
 class MainScene extends Phaser.Scene {
@@ -197,14 +208,15 @@ class MainScene extends Phaser.Scene {
         this.diceSprite = null;
         this.canPlay = false;
         this._drawDice();
-        this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
-        this._refreshCurrentPlayerText();
-        this.input.on("pointerdown", this._tileSelect, this);
         if (mode.isHost()) {
             this._createBoard();
         } else {
             this._askForBoard();
         }
+        this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
+        this.myPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 70, "font", "", 20);
+        this._refreshPlayersTexts();
+        this.input.on("pointerdown", this._tileSelect, this);
         scene = this;
     }
 
@@ -212,6 +224,7 @@ class MainScene extends Phaser.Scene {
         this.engine.generateBoard();
         this._drawField();
         this.canPlay = true;
+        mode.onBoardCreated();
     }
 
     _askForBoard() {
@@ -225,15 +238,38 @@ class MainScene extends Phaser.Scene {
             for (let j = 0; j < this.engine.getColumns(); j ++) {
                 let gemX = gameOptions.boardOffset.x + gameOptions.cellSize * j + gameOptions.cellSize / 2;
                 let gemY = gameOptions.boardOffset.y + gameOptions.cellSize * i + gameOptions.cellSize / 2;
-                this.cellSprites[i][j] = this.add.sprite(gemX, gemY, "tiles", this.engine.getCellAt(i, j));
+                const cellSprite = this.add.sprite(gemX, gemY, "tiles", this.engine.getCellAt(i, j));
+                cellSprite.scaleX = 0;
+                cellSprite.scaleY = 0;
+                this.cellSprites[i][j] = cellSprite;
+                this.tweens.add({
+                    targets: cellSprite,
+                    scaleX: 1,
+                    scaleY: 1,
+                    angle: 180,
+                    _ease: 'Sine.easeInOut',
+                    ease: 'Power2',
+                    duration: 1000,
+                    delay: i * 200,
+                });
+
                 let pawn = this.engine.getPawnAt(i, j);
                 if (pawn != null) {
                     let animal =  this.add.sprite(gemX, gemY, pawn.animal);
                     animal.depth = 1; // TODO: better handling of depth (with groups)
                     this.animalSprites[i][j] = animal;
                     animal.tint = pawn.tint;
-                    animal.displayWidth = gameOptions.cellSize;
-                    animal.displayHeight = gameOptions.cellSize;
+                    animal.displayWidth = 0;
+                    animal.displayHeight = 0;
+                    this.tweens.add({
+                        targets: animal,
+                        displayWidth: gameOptions.cellSize,
+                        displayHeight: gameOptions.cellSize,
+                        _ease: 'Sine.easeInOut',
+                        ease: 'Power2',
+                        duration: 1000,
+                        delay: i * 200,
+                    });
                 }
             }
         }
@@ -260,21 +296,34 @@ class MainScene extends Phaser.Scene {
 
     _endTurn() {
         this._drawDice();
-        this._refreshCurrentPlayerText();
+        this._refreshPlayersTexts();
     }
 
-    _refreshCurrentPlayerText() {
-        this.currentPlayerText.text = "Player " + this.engine.playingTeam + ", your turn"
+    _refreshPlayersTexts() {
+        this.myPlayerText.text = "My color is " + mode.getPlayer();
+        if (this.engine.playingTeam != null) {
+            this.currentPlayerText.text = "Player " + this.engine.playingTeam + ", your turn";
+        } else {
+            this.currentPlayerText.text = "Waiting for other player...";
+        }
     }
 
     _move(startRow, startCol, endRow, endCol) {
+        this.canPlay = false;
         let targetCell = this.cellSprites[endRow][endCol];
         let startSprite = this.animalSprites[startRow][startCol];
-        startSprite.x = targetCell.x;
-        startSprite.y = targetCell.y;
-        this.animalSprites[startRow][startCol] = null;
-        this.animalSprites[endRow][endCol]?.destroy();
-        this.animalSprites[endRow][endCol] = startSprite;
+        this.tweens.add({
+            targets: startSprite,
+            x: targetCell.x,
+            y: targetCell.y,
+            duration: 500,
+            onComplete: () => {
+                this.animalSprites[startRow][startCol] = null;
+                this.animalSprites[endRow][endCol]?.destroy();
+                this.animalSprites[endRow][endCol] = startSprite;
+                this.canPlay = true;
+            }
+        });
     }
 
     // UI Event
@@ -330,7 +379,7 @@ class MainScene extends Phaser.Scene {
         this.engine.loadBoard(info.cells, info.pawns);
         this._drawField();
         this.engine.playingTeam = info.playing_team;
-        this._refreshCurrentPlayerText();
+        this._refreshPlayersTexts();
         this.engine.setDiceValue(info.dice);
         this._drawDice();
         this.canPlay = true;
@@ -392,13 +441,14 @@ class GameEngine {
         this.gamePawns = [];
 
         this.selectedPawn = null;
-        this.playingTeam = obj.teams[0];
+        this.playingTeam = null;
     }
 
     // generates the game board
     generateBoard() {
         this._generateGameArray();
         this._generateGamePawns();
+        this.playingTeam = this.teams[0];
     }
 
     loadBoard(cells, pawns) {

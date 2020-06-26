@@ -25,7 +25,7 @@ window.onload = function() {
             width: gameOptions.width,
             height: gameOptions.height
         },
-        scene: CommunicationScene
+        scene: [CommunicationScene, ShareUrlScene]
     };
     game = new Phaser.Game(gameConfig);
     window.focus();
@@ -58,7 +58,9 @@ class CommunicationScene extends Phaser.Scene {
     remote() {
         const roomName = this.generateRoomName(4);
         // TODO: test if the room already exists.
-        location.href = roomName + "/red";
+        const shareUrl = location.href + roomName + "/blue";
+        const myUrl = roomName + "/red";
+        this.scene.start(ShareUrlScene.name, { shareUrl: shareUrl, myUrl: myUrl });
     }
 
     generateRoomName(length) {
@@ -68,5 +70,61 @@ class CommunicationScene extends Phaser.Scene {
             result += characters.charAt(Math.floor(Math.random() * characters.length));
         }
         return result;
+    }
+}
+
+class ShareUrlScene extends Phaser.Scene {
+    constructor() {
+        super("ShareUrlScene");
+    }
+
+    init(params) {
+        this.shareUrl = params.shareUrl;
+        this.myUrl = params.myUrl;
+    }
+
+    preload() {
+        this.load.bitmapFont("font", STATIC_ROOT + "assets/fonts/font.png", STATIC_ROOT + "assets/fonts/font.fnt");
+    }
+
+    create() {
+        this.add.bitmapText(gameOptions.width / 2, 50, "font", "Share your url to your friend:", 20).setOrigin(0.5, 0,5);
+        this.add.bitmapText(gameOptions.width / 2, 100, "font", this.shareUrl, 20).setOrigin(0.5, 0,5);
+
+        const copyButton = new BitmapButton(this, gameOptions.width / 2, 250, "font", 'Copy URL', 20).setOrigin(0.5, 0,5);
+        this.add.existing(copyButton);
+        copyButton.on('pointerup', this.copyUrl, this);
+        const goButton = new BitmapButton(this, gameOptions.width / 2, 300, "font", 'Go!', 20).setOrigin(0.5, 0,5);
+        this.add.existing(goButton);
+        goButton.on('pointerup', this.goToGame, this);
+    }
+
+    copyUrl() {
+        let invisibleText = document.getElementById('invisibleUrl');
+        invisibleText.innerHTML = this.shareUrl;
+        this.selectText(invisibleText);
+        document.execCommand("copy");
+        invisibleText.innerHTML = "";
+    }
+
+    goToGame() {
+        location.href = this.myUrl;
+    }
+
+    // courtesy of https://stackoverflow.com/a/987376/4269317
+    selectText(node) {
+        if (document.body.createTextRange) {
+            const range = document.body.createTextRange();
+            range.moveToElementText(node);
+            range.select();
+        } else if (window.getSelection) {
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } else {
+            console.warn("Could not select text in node: Unsupported browser.");
+        }
     }
 }
