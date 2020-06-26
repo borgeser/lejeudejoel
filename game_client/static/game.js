@@ -238,15 +238,38 @@ class MainScene extends Phaser.Scene {
             for (let j = 0; j < this.engine.getColumns(); j ++) {
                 let gemX = gameOptions.boardOffset.x + gameOptions.cellSize * j + gameOptions.cellSize / 2;
                 let gemY = gameOptions.boardOffset.y + gameOptions.cellSize * i + gameOptions.cellSize / 2;
-                this.cellSprites[i][j] = this.add.sprite(gemX, gemY, "tiles", this.engine.getCellAt(i, j));
+                const cellSprite = this.add.sprite(gemX, gemY, "tiles", this.engine.getCellAt(i, j));
+                cellSprite.scaleX = 0;
+                cellSprite.scaleY = 0;
+                this.cellSprites[i][j] = cellSprite;
+                this.tweens.add({
+                    targets: cellSprite,
+                    scaleX: 1,
+                    scaleY: 1,
+                    angle: 180,
+                    _ease: 'Sine.easeInOut',
+                    ease: 'Power2',
+                    duration: 1000,
+                    delay: i * 200,
+                });
+
                 let pawn = this.engine.getPawnAt(i, j);
                 if (pawn != null) {
                     let animal =  this.add.sprite(gemX, gemY, pawn.animal);
                     animal.depth = 1; // TODO: better handling of depth (with groups)
                     this.animalSprites[i][j] = animal;
                     animal.tint = pawn.tint;
-                    animal.displayWidth = gameOptions.cellSize;
-                    animal.displayHeight = gameOptions.cellSize;
+                    animal.displayWidth = 0;
+                    animal.displayHeight = 0;
+                    this.tweens.add({
+                        targets: animal,
+                        displayWidth: gameOptions.cellSize,
+                        displayHeight: gameOptions.cellSize,
+                        _ease: 'Sine.easeInOut',
+                        ease: 'Power2',
+                        duration: 1000,
+                        delay: i * 200,
+                    });
                 }
             }
         }
