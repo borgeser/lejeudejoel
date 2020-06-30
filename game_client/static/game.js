@@ -111,7 +111,7 @@ class RemoteMode {
                 if (!this.isHost()) {
                     return;
                 }
-                this.sendBoard();
+                this._sendBoard();
             } else if (data.action === "board") {
                 scene.boardReceived(data.details);
             } else {
@@ -128,10 +128,22 @@ class RemoteMode {
         };
     }
 
-    sendBoard() {
+    _send(data){
+        this._waitForConnection(() => this.socket.send(data), 1000);
+    }
+
+    _waitForConnection(callback, interval=1000) {
+        if (this.socket.readyState === WebSocket.OPEN) {
+            callback();
+        } else {
+            setTimeout(() => this._waitForConnection(callback, interval), interval);
+        }
+    }
+
+    _sendBoard() {
         const cells = engine.exportCells();
         const pawns = engine.exportPawns();
-        this.socket.send(JSON.stringify({
+        this._send(JSON.stringify({
             player: this.getPlayer(),
             action: 'board',
             details: {
@@ -144,9 +156,9 @@ class RemoteMode {
     }
 
     // UI Events
-
+    
     onDiceRolled(color) {
-        this.socket.send(JSON.stringify({
+        this._send(JSON.stringify({
             player: this.getPlayer(),
             action: 'dice',
             details: {
@@ -156,7 +168,7 @@ class RemoteMode {
     }
 
     onMove(startX, startY, endX, endY) {
-        this.socket.send(JSON.stringify({
+        this._send(JSON.stringify({
             player: this.getPlayer(),
             action: 'move',
             details: {
@@ -173,14 +185,14 @@ class RemoteMode {
     }
 
     onBoardAsked() {
-        this.socket.send(JSON.stringify({
+        this._send(JSON.stringify({
             player: this.getPlayer(),
             action: 'connect'
         }));
     }
 
     onBoardCreated() {
-        this.sendBoard();
+        this._sendBoard();
     }
 }
 
