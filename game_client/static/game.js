@@ -10,7 +10,7 @@ if (window.location.protocol === "https:") {
 const engineConfig = {
     rows: 5,
     columns: 5,
-    items: 4,
+    items: 5,
     teams: ["red", "blue"],
     animals: ["mouse", "cat", "dog", "lion", "elephant"]
 };
@@ -298,10 +298,11 @@ class MainScene extends Phaser.Scene {
 
     _getDiceTileIndex(diceValue) {
         if (diceValue == null) {
+            // TODO: Add sprite for empty dice
             return 5;
         }
         if (diceValue === -1) {
-            return 4;
+            return 5;
         }
         return diceValue;
     }
@@ -477,12 +478,22 @@ class GameEngine {
     }
 
     _generateGameArray() {
+        let cells = this._notSortedValuesForCells();
         for (let i = 0; i < this.rows; i++) {
             this.gameArray[i] = [];
             for (let j = 0; j < this.columns; j++) {
-                this.gameArray[i][j] = Math.floor(Math.random() * this.items);
+                const randomIndex = Math.floor(Math.random() * cells.length);
+                this.gameArray[i][j] = cells.splice(randomIndex, 1)[0];
             }
         }
+    }
+
+    _notSortedValuesForCells() {
+        let result = [];
+        for (let i = 0; i < this.columns; i++) {
+            result = result.concat(Array(this.items).fill(i));
+        }
+        return result;
     }
 
     _generateGamePawns() {
@@ -624,7 +635,7 @@ class GameEngine {
 
 class Dice {
     constructor() {
-        this.faces = [-1, -1, 0, 1, 2, 3];
+        this.faces = [-1, 0, 1, 2, 3, 4];
         this.value = null;
     }
 
