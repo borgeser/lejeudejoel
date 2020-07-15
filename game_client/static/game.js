@@ -7,12 +7,21 @@ if (window.location.protocol === "https:") {
     WS_SCHEME = "ws://"
 }
 
+const colors = {
+    YELLOW: 0,
+    BLUE: 1,
+    RED: 2,
+    GREEN: 3,
+    GREY: 4
+};
+
 const engineConfig = {
     rows: 5,
     columns: 5,
     items: 5,
     teams: ["red", "blue"],
-    animals: ["mouse", "cat", "dog", "lion", "elephant"]
+    animals: ["mouse", "cat", "dog", "lion", "elephant"],
+    animalsColors: [colors.GREY, colors.GREEN, colors.RED, colors.YELLOW, colors.BLUE]
 };
 
 const gameOptions = {
@@ -416,6 +425,7 @@ class Pawn {
     constructor(params) {
         this.index = params.index;
         this.animal = params.animal;
+        this.color = params.color;
         this.team = params.team;
     }
 
@@ -448,6 +458,7 @@ class GameEngine {
         this.columns = obj.columns;
         this.items = obj.items;
         this.animals = obj.animals;
+        this.animalsColors = obj.animalsColors;
 
         this._dice = new Dice();
         this.gameArray = [];
@@ -501,9 +512,9 @@ class GameEngine {
             this.gamePawns[i] = [];
             for (let j = 0; j < this.columns; j++) {
                 if (i === 0) {
-                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], team: this.teams[0]});
+                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], color: this.animalsColors[j], team: this.teams[0]});
                 } else if (i === this.rows - 1) {
-                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], team: this.teams[1]});
+                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], color: this.animalsColors[j], team: this.teams[1]});
                 } else {
                     this.gamePawns[i][j] = null;
                 }
@@ -564,7 +575,7 @@ class GameEngine {
             return true
         }
         return this.getCellAt(startRow, startCol) === currentColor
-            || this.getCellAt(endRow, endCol) === currentColor;
+            || startPawn.color === currentColor;
     }
 
     canSelect(row, col) {
@@ -578,7 +589,8 @@ class GameEngine {
     }
 
     isAdjacent(startRow, startCol, endRow, endCol) {
-        return Math.abs(endRow - startRow) <= 1 && Math.abs(endCol - startCol) <= 1;
+        return (endRow === startRow && Math.abs(endCol - startCol) <= 1) ||
+               (endCol === startCol && Math.abs(endRow - startRow) <= 1);
     }
 
     rollDice() {
