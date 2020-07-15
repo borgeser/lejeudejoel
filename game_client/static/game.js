@@ -1,3 +1,5 @@
+import {BitmapButton} from "./game-objects/bitmapButton.js";
+
 const STATIC_ROOT = "/static/";
 
 let WS_SCHEME;
@@ -228,12 +230,12 @@ class MainScene extends Phaser.Scene {
         this.animalSprites = [];
         this.diceSprite = null;
         this.canPlay = false;
-        this._drawDice();
         if (mode.isHost()) {
             this._createBoard();
         } else {
             this._askForBoard();
         }
+        this._drawDice();
         this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
         this.myPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 70, "font", "", 20);
         this._refreshPlayersTexts();
@@ -301,15 +303,18 @@ class MainScene extends Phaser.Scene {
         const x = 1.5 * gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows() + gameOptions.cellSize / 2;
         const y = gameOptions.boardOffset.y + gameOptions.cellSize * Math.floor(this.engine.getColumns() / 2) + gameOptions.cellSize / 2;
         const tileIndex = this._getDiceTileIndex(this.engine.getDiceValue());
-        this.diceSprite = this.add.sprite(x, y, "tiles", tileIndex).setInteractive();
-        this.diceSprite.on('pointerdown', this._diceSelect, this);
+        if (tileIndex == null) {
+            if (this.engine.canPlayerRoll(mode.getPlayer())) {
+                this.diceSprite = new BitmapButton(this, x, y, "font", 'Draw dice', 20).setOrigin(0.5, 0, 5);
+                this.add.existing(this.diceSprite);
+                this.diceSprite.on('pointerdown', this._diceSelect, this);
+            }
+        } else {
+            this.diceSprite = this.add.sprite(x, y, "tiles", tileIndex);
+        }
     }
 
     _getDiceTileIndex(diceValue) {
-        if (diceValue == null) {
-            // TODO: Add sprite for empty dice
-            return 5;
-        }
         if (diceValue === -1) {
             return 5;
         }
