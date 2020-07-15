@@ -58,8 +58,8 @@ class CommunicationScene extends Phaser.Scene {
     remote() {
         const roomName = this.generateRoomName(4);
         // TODO: test if the room already exists.
-        const shareUrl = location.href + roomName + "/blue";
-        const myUrl = roomName + "/red";
+        const shareUrl = location.href + roomName + "/purple";
+        const myUrl = roomName + "/orange";
         this.scene.start(ShareUrlScene.name, { shareUrl: shareUrl, myUrl: myUrl });
     }
 

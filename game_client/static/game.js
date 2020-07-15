@@ -19,7 +19,7 @@ const engineConfig = {
     rows: 5,
     columns: 5,
     items: 5,
-    teams: ["red", "blue"],
+    teams: ["orange", "purple"],
     animals: ["mouse", "cat", "dog", "lion", "elephant"],
     animalsColors: [colors.GREY, colors.GREEN, colors.RED, colors.YELLOW, colors.BLUE]
 };
@@ -88,7 +88,7 @@ class RemoteMode {
     }
 
     isHost() {
-        return this.getPlayer() === "red";
+        return this.getPlayer() === "orange";
     }
 
     startWebSocket() {
@@ -101,7 +101,7 @@ class RemoteMode {
         );
         this.socket = socket;
 
-        // TODO: prevent two parallel players of the same kind (red or blue)
+        // TODO: prevent two parallel players of the same kind (orange or purple)
 
         socket.onmessage = (e) => {
             console.log("New event: " + e.data);
@@ -430,10 +430,10 @@ class Pawn {
     }
 
     get tint() {
-        if (this.team === "red") {
-            return 0xff0000;
+        if (this.team === "purple") {
+            return 0x800080;
         }
-        return 0x0000ff;
+        return 0xff7f00;
     }
 
     canBeat(other) {
