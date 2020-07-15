@@ -524,6 +524,10 @@ class GameEngine {
         return this.gamePawns[row][column];
     }
 
+    getNumberOfPawns(team) {
+        return this.gamePawns.reduce((acc, row) => acc + row.reduce((acc2, pawn) => acc2 + (pawn?.team === team ? 1 : 0), 0), 0);
+    }
+
     // returns true if the item at (row, column) is a valid pick
     validPick(row, column) {
         return row >= 0 && row < this.rows && column >= 0 && column < this.columns;
@@ -588,6 +592,25 @@ class GameEngine {
 
     isDiceRolled() {
         return this._dice.value != null;
+    }
+
+    isGameFinished() {
+        for (let team of this.teams) {
+            if (this.getNumberOfPawns(team) === 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    getWinningTeam() {
+        for (let index = 0; index < this.teams.length; index ++) {
+            if (this.getNumberOfPawns(this.teams[index]) === 0) {
+                const nextIndex = (index + 1) % this.teams.length;
+                return this.teams[nextIndex];
+            }
+        }
+        return null;
     }
 
     endTurn() {

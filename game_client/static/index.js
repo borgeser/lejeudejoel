@@ -88,8 +88,11 @@ class ShareUrlScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.bitmapText(gameOptions.width / 2, 50, "font", "Share your url to your friend:", 20).setOrigin(0.5, 0,5);
-        this.add.bitmapText(gameOptions.width / 2, 100, "font", this.shareUrl, 20).setOrigin(0.5, 0,5);
+        this.add.bitmapText(gameOptions.width / 2, 50, "font", "Share your url to your friend:", 20)
+                .setOrigin(0.5, 0,5);
+        this.add.bitmapText(gameOptions.width / 2, 100, "font", this.shareUrl, 20)
+                .setOrigin(0.5, 0,5)
+                .setMaxWidth(gameOptions.width, 47); // 47 is the '/' character in ASCII
 
         const copyButton = new BitmapButton(this, gameOptions.width / 2, 250, "font", 'Copy URL', 20).setOrigin(0.5, 0,5);
         this.add.existing(copyButton);
