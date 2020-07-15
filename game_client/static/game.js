@@ -72,6 +72,8 @@ class LocalMode {
 
     onMove(startX, startY, endX, endY, player) {}
 
+    onSkip() {}
+
     onDiceRolled(color, player) {}
 
     onBoardAsked() {}
@@ -118,6 +120,8 @@ class RemoteMode {
             } else if (data.action === "move") {
                 let details = data.details;
                 scene.moveFinished(details.before.x, details.before.y, details.after.x, details.after.y);
+            } else if (data.action === "skip") {
+                scene.skipGranted();
             } else if (data.action === "connect") {
                 if (!this.isHost()) {
                     return;
@@ -195,6 +199,13 @@ class RemoteMode {
         }));
     }
 
+    onSkip() {
+        this._send(JSON.stringify({
+            player: this.getPlayer(),
+            action: 'skip'
+        }));
+    }
+
     onBoardAsked() {
         this._send(JSON.stringify({
             player: this.getPlayer(),
@@ -229,6 +240,7 @@ class MainScene extends Phaser.Scene {
         this.cellSprites = [];
         this.animalSprites = [];
         this.diceSprite = null;
+        this.skipButton = null;
         this.canPlay = false;
         if (mode.isHost()) {
             this._createBoard();
@@ -236,6 +248,7 @@ class MainScene extends Phaser.Scene {
             this._askForBoard();
         }
         this._drawDice();
+        this._drawSkipTurn();
         this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
         this.myPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 70, "font", "", 20);
         this._refreshPlayersTexts();
@@ -314,6 +327,17 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    _drawSkipTurn() {
+        this.skipButton?.destroy();
+        const x = 1.5 * gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows() + gameOptions.cellSize / 2;
+        const y = gameOptions.boardOffset.y + gameOptions.cellSize * this.engine.getColumns();
+        if (this.engine.canPlayerMove(mode.getPlayer())) {
+            this.skipButton = new BitmapButton(this, x, y, "font", 'Skip turn', 20).setOrigin(0.5, 0, 5);
+            this.add.existing(this.skipButton);
+            this.skipButton.on('pointerdown', this._skipSelect, this);
+        }
+    }
+
     _getDiceTileIndex(diceValue) {
         if (diceValue === -1) {
             return 5;
@@ -323,6 +347,7 @@ class MainScene extends Phaser.Scene {
 
     _endTurn() {
         this._drawDice();
+        this._drawSkipTurn();
         this._refreshPlayersTexts();
     }
 
@@ -353,6 +378,23 @@ class MainScene extends Phaser.Scene {
         });
     }
 
+    _addSelectedPawnTint() {
+        const row = this.engine.selectedPawn.row;
+        const col = this.engine.selectedPawn.col;
+        const animalSprite = this.animalSprites[row][col];
+        animalSprite.setTint(0xffffff);
+    }
+
+    _removeSelectedPawnTint() {
+        if (this.engine.selectedPawn == null) {
+            return;
+        }
+        const row = this.engine.selectedPawn.row;
+        const col = this.engine.selectedPawn.col;
+        const pawn = this.engine.getPawnAt(row, col);
+        this.animalSprites[row][col].tint = pawn?.tint;
+    }
+
     // UI Event
 
     _diceSelect() {
@@ -361,7 +403,19 @@ class MainScene extends Phaser.Scene {
         }
         this.engine.rollDice();
         this._drawDice();
+        this._drawSkipTurn();
         mode.onDiceRolled(this.engine.getDiceValue(), this.engine.playingTeam);
+    }
+
+    _skipSelect() {
+        if (!this.canPlay || !this.engine.canPlayerMove(mode.getPlayer())) {
+            return;
+        }
+        this._removeSelectedPawnTint();
+        this.engine.selectedPawn = null;
+        this.engine.endTurn();
+        this._endTurn();
+        mode.onSkip();
     }
 
     _tileSelect(pointer) {
@@ -374,28 +428,23 @@ class MainScene extends Phaser.Scene {
             if (!this.engine.canSelect(row, col)) {
                 return;
             }
-            let animalSprite = this.animalSprites[row][col];
-            animalSprite.setTint(0xffffff);
             this.engine.selectedPawn = { "row": row, "col": col };
+            this._addSelectedPawnTint();
         } else {
             const startRow = this.engine.selectedPawn.row;
             const startCol = this.engine.selectedPawn.col;
-            const startPawn = this.engine.getPawnAt(startRow, startCol);
+            this._removeSelectedPawnTint();
+            this.engine.selectedPawn = null;
             if (startRow === row && startCol === col) {
-                // cancel selection
-                this.animalSprites[startRow][startCol].tint = startPawn.tint;
-                this.engine.selectedPawn = null;
                 return;
             }
             if (!this.engine.canMove(startRow, startCol, row, col)) {
                 return;
             }
-            this.animalSprites[startRow][startCol].tint = startPawn.tint;
             this._move(startRow, startCol, row, col);
             this.engine.move(startRow, startCol, row, col);
             this.engine.endTurn();
             this._endTurn();
-            this.engine.selectedPawn = null;
             mode.onMove(startRow, startCol, row, col);
         }
     }
@@ -409,17 +458,24 @@ class MainScene extends Phaser.Scene {
         this._refreshPlayersTexts();
         this.engine.setDiceValue(info.dice);
         this._drawDice();
+        this._drawSkipTurn();
         this.canPlay = true;
     }
 
     diceRolled(color) {
         this.engine.setDiceValue(color);
         this._drawDice();
+        this._drawSkipTurn();
     }
 
     moveFinished(startRow, startCol, endRow, endCol) {
         this._move(startRow, startCol, endRow, endCol);
         this.engine.move(startRow, startCol, endRow, endCol);
+        this.engine.endTurn();
+        this._endTurn();
+    }
+
+    skipGranted() {
         this.engine.endTurn();
         this._endTurn();
     }
