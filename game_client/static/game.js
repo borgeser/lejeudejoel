@@ -318,7 +318,7 @@ class MainScene extends Phaser.Scene {
         const tileIndex = this._getDiceTileIndex(this.engine.getDiceValue());
         if (tileIndex == null) {
             if (this.engine.canPlayerRoll(mode.getPlayer())) {
-                this.diceSprite = new BitmapButton(this, x, y, "font", 'Draw dice', 20).setOrigin(0.5, 0, 5);
+                this.diceSprite = new BitmapButton(this, x, y, "font", 'Draw dice', 20).setOrigin(0.5, 0.5);
                 this.add.existing(this.diceSprite);
                 this.diceSprite.on('pointerdown', this._diceSelect, this);
             }
@@ -330,9 +330,9 @@ class MainScene extends Phaser.Scene {
     _drawSkipTurn() {
         this.skipButton?.destroy();
         const x = 1.5 * gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows() + gameOptions.cellSize / 2;
-        const y = gameOptions.boardOffset.y + gameOptions.cellSize * this.engine.getColumns();
+        const y = gameOptions.boardOffset.y + gameOptions.cellSize * this.engine.getColumns() - gameOptions.cellSize / 2;
         if (this.engine.canPlayerMove(mode.getPlayer())) {
-            this.skipButton = new BitmapButton(this, x, y, "font", 'Skip turn', 20).setOrigin(0.5, 0, 5);
+            this.skipButton = new BitmapButton(this, x, y, "font", 'Skip turn', 20).setOrigin(0.5, 0.5);
             this.add.existing(this.skipButton);
             this.skipButton.on('pointerdown', this._skipSelect, this);
         }
