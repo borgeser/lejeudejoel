@@ -156,7 +156,7 @@ class RemoteMode {
     }
 
     // UI Events
-    
+
     onDiceRolled(color) {
         this._send(JSON.stringify({
             player: this.getPlayer(),
