@@ -679,17 +679,12 @@ class GameEngine {
     }
 
     isGameFinished() {
-        for (let team of this.teams) {
-            if (this.getNumberOfPawns(team) === 0) {
-                return true;
-            }
-        }
-        return false;
+        return this.getWinningTeam() != null;
     }
 
     getWinningTeam() {
         for (let index = 0; index < this.teams.length; index ++) {
-            if (this.getNumberOfPawns(this.teams[index]) === 0) {
+            if (this.getNumberOfPawns(this.teams[index]) <= 2) {
                 const nextIndex = (index + 1) % this.teams.length;
                 return this.teams[nextIndex];
             }
