@@ -1,3 +1,5 @@
+import {BitmapButton} from "./game-objects/bitmapButton.js";
+
 const STATIC_ROOT = "/static/";
 
 let WS_SCHEME;
@@ -7,22 +9,32 @@ if (window.location.protocol === "https:") {
     WS_SCHEME = "ws://"
 }
 
+const colors = {
+    YELLOW: 0,
+    BLUE: 1,
+    RED: 2,
+    GREEN: 3,
+    GREY: 4
+};
+
 const engineConfig = {
     rows: 5,
     columns: 5,
-    items: 4,
-    teams: ["red", "blue"],
-    animals: ["mouse", "cat", "dog", "lion", "elephant"]
+    items: 5,
+    teams: ["orange", "purple"],
+    animals: ["mouse", "cat", "dog", "lion", "elephant"],
+    animalsColors: [colors.GREY, colors.GREEN, colors.RED, colors.YELLOW, colors.BLUE]
 };
 
 const gameOptions = {
-    cellSize: 80,
+    cellSize: 256,
+    fontSize: 36,
     boardOffset: {
-        x: 160,
-        y: 140
+        x: 512,
+        y: 512
     },
-    width: 800,
-    height: 600,
+    width: 2304,
+    height: 2304,
 };
 
 window.onload = function() {
@@ -61,6 +73,8 @@ class LocalMode {
 
     onMove(startX, startY, endX, endY, player) {}
 
+    onSkip() {}
+
     onDiceRolled(color, player) {}
 
     onBoardAsked() {}
@@ -79,7 +93,7 @@ class RemoteMode {
     }
 
     isHost() {
-        return this.getPlayer() === "red";
+        return this.getPlayer() === "orange";
     }
 
     startWebSocket() {
@@ -92,7 +106,7 @@ class RemoteMode {
         );
         this.socket = socket;
 
-        // TODO: prevent two parallel players of the same kind (red or blue)
+        // TODO: prevent two parallel players of the same kind (orange or purple)
 
         socket.onmessage = (e) => {
             console.log("New event: " + e.data);
@@ -107,6 +121,8 @@ class RemoteMode {
             } else if (data.action === "move") {
                 let details = data.details;
                 scene.moveFinished(details.before.x, details.before.y, details.after.x, details.after.y);
+            } else if (data.action === "skip") {
+                scene.skipGranted();
             } else if (data.action === "connect") {
                 if (!this.isHost()) {
                     return;
@@ -156,7 +172,7 @@ class RemoteMode {
     }
 
     // UI Events
-    
+
     onDiceRolled(color) {
         this._send(JSON.stringify({
             player: this.getPlayer(),
@@ -184,6 +200,13 @@ class RemoteMode {
         }));
     }
 
+    onSkip() {
+        this._send(JSON.stringify({
+            player: this.getPlayer(),
+            action: 'skip'
+        }));
+    }
+
     onBoardAsked() {
         this._send(JSON.stringify({
             player: this.getPlayer(),
@@ -204,8 +227,8 @@ class MainScene extends Phaser.Scene {
 
     preload() {
         this.load.spritesheet("tiles", STATIC_ROOT + "assets/sprites/tiles.png", {
-            frameWidth: 80,
-            frameHeight: 80
+            frameWidth: gameOptions.cellSize,
+            frameHeight: gameOptions.cellSize
         });
         for (let animal of engineConfig.animals) {
             let img = this.load.image(animal, STATIC_ROOT + 'assets/sprites/' + animal + '.png');
@@ -218,15 +241,17 @@ class MainScene extends Phaser.Scene {
         this.cellSprites = [];
         this.animalSprites = [];
         this.diceSprite = null;
+        this.skipButton = null;
         this.canPlay = false;
-        this._drawDice();
         if (mode.isHost()) {
             this._createBoard();
         } else {
             this._askForBoard();
         }
-        this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
-        this.myPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 70, "font", "", 20);
+        this._drawDice();
+        this._drawSkipTurn();
+        this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", gameOptions.fontSize);
+        this.myPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 70, "font", "", gameOptions.fontSize);
         this._refreshPlayersTexts();
         this.input.on("pointerdown", this._tileSelect, this);
         scene = this;
@@ -271,12 +296,12 @@ class MainScene extends Phaser.Scene {
                     animal.depth = 1; // TODO: better handling of depth (with groups)
                     this.animalSprites[i][j] = animal;
                     animal.tint = pawn.tint;
-                    animal.displayWidth = 0;
-                    animal.displayHeight = 0;
+                    animal.scaleX = 0;
+                    animal.scaleY = 0;
                     this.tweens.add({
                         targets: animal,
-                        displayWidth: gameOptions.cellSize,
-                        displayHeight: gameOptions.cellSize,
+                        scaleX: 1,
+                        scaleY: 1,
                         _ease: 'Sine.easeInOut',
                         ease: 'Power2',
                         duration: 1000,
@@ -292,22 +317,38 @@ class MainScene extends Phaser.Scene {
         const x = 1.5 * gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows() + gameOptions.cellSize / 2;
         const y = gameOptions.boardOffset.y + gameOptions.cellSize * Math.floor(this.engine.getColumns() / 2) + gameOptions.cellSize / 2;
         const tileIndex = this._getDiceTileIndex(this.engine.getDiceValue());
-        this.diceSprite = this.add.sprite(x, y, "tiles", tileIndex).setInteractive();
-        this.diceSprite.on('pointerdown', this._diceSelect, this);
+        if (tileIndex == null) {
+            if (this.engine.canPlayerRoll(mode.getPlayer())) {
+                this.diceSprite = new BitmapButton(this, x, y, "font", 'Roll dice', gameOptions.fontSize).setOrigin(0.5, 0.5);
+                this.add.existing(this.diceSprite);
+                this.diceSprite.on('pointerdown', this._diceSelect, this);
+            }
+        } else {
+            this.diceSprite = this.add.sprite(x, y, "tiles", tileIndex);
+        }
+    }
+
+    _drawSkipTurn() {
+        this.skipButton?.destroy();
+        const x = 1.5 * gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows() + gameOptions.cellSize / 2;
+        const y = gameOptions.boardOffset.y + gameOptions.cellSize * this.engine.getColumns() - gameOptions.cellSize / 2;
+        if (this.engine.canPlayerMove(mode.getPlayer())) {
+            this.skipButton = new BitmapButton(this, x, y, "font", 'Skip turn', gameOptions.fontSize).setOrigin(0.5, 0.5);
+            this.add.existing(this.skipButton);
+            this.skipButton.on('pointerdown', this._skipSelect, this);
+        }
     }
 
     _getDiceTileIndex(diceValue) {
-        if (diceValue == null) {
-            return 5;
-        }
         if (diceValue === -1) {
-            return 4;
+            return 5;
         }
         return diceValue;
     }
 
     _endTurn() {
         this._drawDice();
+        this._drawSkipTurn();
         this._refreshPlayersTexts();
     }
 
@@ -338,6 +379,23 @@ class MainScene extends Phaser.Scene {
         });
     }
 
+    _addSelectedPawnTint() {
+        const row = this.engine.selectedPawn.row;
+        const col = this.engine.selectedPawn.col;
+        const animalSprite = this.animalSprites[row][col];
+        animalSprite.setTint(0xffffff);
+    }
+
+    _removeSelectedPawnTint() {
+        if (this.engine.selectedPawn == null) {
+            return;
+        }
+        const row = this.engine.selectedPawn.row;
+        const col = this.engine.selectedPawn.col;
+        const pawn = this.engine.getPawnAt(row, col);
+        this.animalSprites[row][col].tint = pawn?.tint;
+    }
+
     // UI Event
 
     _diceSelect() {
@@ -346,7 +404,19 @@ class MainScene extends Phaser.Scene {
         }
         this.engine.rollDice();
         this._drawDice();
+        this._drawSkipTurn();
         mode.onDiceRolled(this.engine.getDiceValue(), this.engine.playingTeam);
+    }
+
+    _skipSelect() {
+        if (!this.canPlay || !this.engine.canPlayerMove(mode.getPlayer())) {
+            return;
+        }
+        this._removeSelectedPawnTint();
+        this.engine.selectedPawn = null;
+        this.engine.endTurn();
+        this._endTurn();
+        mode.onSkip();
     }
 
     _tileSelect(pointer) {
@@ -359,28 +429,23 @@ class MainScene extends Phaser.Scene {
             if (!this.engine.canSelect(row, col)) {
                 return;
             }
-            let animalSprite = this.animalSprites[row][col];
-            animalSprite.setTint(0xffffff);
             this.engine.selectedPawn = { "row": row, "col": col };
+            this._addSelectedPawnTint();
         } else {
             const startRow = this.engine.selectedPawn.row;
             const startCol = this.engine.selectedPawn.col;
-            const startPawn = this.engine.getPawnAt(startRow, startCol);
+            this._removeSelectedPawnTint();
+            this.engine.selectedPawn = null;
             if (startRow === row && startCol === col) {
-                // cancel selection
-                this.animalSprites[startRow][startCol].tint = startPawn.tint;
-                this.engine.selectedPawn = null;
                 return;
             }
             if (!this.engine.canMove(startRow, startCol, row, col)) {
                 return;
             }
-            this.animalSprites[startRow][startCol].tint = startPawn.tint;
             this._move(startRow, startCol, row, col);
             this.engine.move(startRow, startCol, row, col);
             this.engine.endTurn();
             this._endTurn();
-            this.engine.selectedPawn = null;
             mode.onMove(startRow, startCol, row, col);
         }
     }
@@ -394,17 +459,24 @@ class MainScene extends Phaser.Scene {
         this._refreshPlayersTexts();
         this.engine.setDiceValue(info.dice);
         this._drawDice();
+        this._drawSkipTurn();
         this.canPlay = true;
     }
 
     diceRolled(color) {
         this.engine.setDiceValue(color);
         this._drawDice();
+        this._drawSkipTurn();
     }
 
     moveFinished(startRow, startCol, endRow, endCol) {
         this._move(startRow, startCol, endRow, endCol);
         this.engine.move(startRow, startCol, endRow, endCol);
+        this.engine.endTurn();
+        this._endTurn();
+    }
+
+    skipGranted() {
         this.engine.endTurn();
         this._endTurn();
     }
@@ -415,14 +487,15 @@ class Pawn {
     constructor(params) {
         this.index = params.index;
         this.animal = params.animal;
+        this.color = params.color;
         this.team = params.team;
     }
 
     get tint() {
-        if (this.team === "red") {
-            return 0xff0000;
+        if (this.team === "purple") {
+            return 0x800080;
         }
-        return 0x0000ff;
+        return 0xff7f00;
     }
 
     canBeat(other) {
@@ -447,6 +520,7 @@ class GameEngine {
         this.columns = obj.columns;
         this.items = obj.items;
         this.animals = obj.animals;
+        this.animalsColors = obj.animalsColors;
 
         this._dice = new Dice();
         this.gameArray = [];
@@ -477,12 +551,22 @@ class GameEngine {
     }
 
     _generateGameArray() {
+        let cells = this._notSortedValuesForCells();
         for (let i = 0; i < this.rows; i++) {
             this.gameArray[i] = [];
             for (let j = 0; j < this.columns; j++) {
-                this.gameArray[i][j] = Math.floor(Math.random() * this.items);
+                const randomIndex = Math.floor(Math.random() * cells.length);
+                this.gameArray[i][j] = cells.splice(randomIndex, 1)[0];
             }
         }
+    }
+
+    _notSortedValuesForCells() {
+        let result = [];
+        for (let i = 0; i < this.columns; i++) {
+            result = result.concat(Array(this.items).fill(i));
+        }
+        return result;
     }
 
     _generateGamePawns() {
@@ -490,9 +574,9 @@ class GameEngine {
             this.gamePawns[i] = [];
             for (let j = 0; j < this.columns; j++) {
                 if (i === 0) {
-                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], team: this.teams[0]});
+                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], color: this.animalsColors[j], team: this.teams[0]});
                 } else if (i === this.rows - 1) {
-                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], team: this.teams[1]});
+                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], color: this.animalsColors[j], team: this.teams[1]});
                 } else {
                     this.gamePawns[i][j] = null;
                 }
@@ -553,7 +637,7 @@ class GameEngine {
             return true
         }
         return this.getCellAt(startRow, startCol) === currentColor
-            || this.getCellAt(endRow, endCol) === currentColor;
+            || startPawn.color === currentColor;
     }
 
     canSelect(row, col) {
@@ -567,7 +651,8 @@ class GameEngine {
     }
 
     isAdjacent(startRow, startCol, endRow, endCol) {
-        return Math.abs(endRow - startRow) <= 1 && Math.abs(endCol - startCol) <= 1;
+        return (endRow === startRow && Math.abs(endCol - startCol) <= 1) ||
+               (endCol === startCol && Math.abs(endRow - startRow) <= 1);
     }
 
     rollDice() {
@@ -595,17 +680,12 @@ class GameEngine {
     }
 
     isGameFinished() {
-        for (let team of this.teams) {
-            if (this.getNumberOfPawns(team) === 0) {
-                return true;
-            }
-        }
-        return false;
+        return this.getWinningTeam() != null;
     }
 
     getWinningTeam() {
         for (let index = 0; index < this.teams.length; index ++) {
-            if (this.getNumberOfPawns(this.teams[index]) === 0) {
+            if (this.getNumberOfPawns(this.teams[index]) <= 2) {
                 const nextIndex = (index + 1) % this.teams.length;
                 return this.teams[nextIndex];
             }
@@ -624,7 +704,7 @@ class GameEngine {
 
 class Dice {
     constructor() {
-        this.faces = [-1, -1, 0, 1, 2, 3];
+        this.faces = [-1, 0, 1, 2, 3, 4];
         this.value = null;
     }
 
