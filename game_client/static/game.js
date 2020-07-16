@@ -27,13 +27,14 @@ const engineConfig = {
 };
 
 const gameOptions = {
-    cellSize: 80,
+    cellSize: 256,
+    fontSize: 36,
     boardOffset: {
-        x: 160,
-        y: 140
+        x: 512,
+        y: 512
     },
-    width: 800,
-    height: 600,
+    width: 2304,
+    height: 2304,
 };
 
 window.onload = function() {
@@ -226,8 +227,8 @@ class MainScene extends Phaser.Scene {
 
     preload() {
         this.load.spritesheet("tiles", STATIC_ROOT + "assets/sprites/tiles.png", {
-            frameWidth: 80,
-            frameHeight: 80
+            frameWidth: gameOptions.cellSize,
+            frameHeight: gameOptions.cellSize
         });
         for (let animal of engineConfig.animals) {
             let img = this.load.image(animal, STATIC_ROOT + 'assets/sprites/' + animal + '.png');
@@ -249,8 +250,8 @@ class MainScene extends Phaser.Scene {
         }
         this._drawDice();
         this._drawSkipTurn();
-        this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", 20);
-        this.myPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 70, "font", "", 20);
+        this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", gameOptions.fontSize);
+        this.myPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 70, "font", "", gameOptions.fontSize);
         this._refreshPlayersTexts();
         this.input.on("pointerdown", this._tileSelect, this);
         scene = this;
@@ -295,12 +296,12 @@ class MainScene extends Phaser.Scene {
                     animal.depth = 1; // TODO: better handling of depth (with groups)
                     this.animalSprites[i][j] = animal;
                     animal.tint = pawn.tint;
-                    animal.displayWidth = 0;
-                    animal.displayHeight = 0;
+                    animal.scaleX = 0;
+                    animal.scaleY = 0;
                     this.tweens.add({
                         targets: animal,
-                        displayWidth: gameOptions.cellSize,
-                        displayHeight: gameOptions.cellSize,
+                        scaleX: 1,
+                        scaleY: 1,
                         _ease: 'Sine.easeInOut',
                         ease: 'Power2',
                         duration: 1000,
@@ -318,7 +319,7 @@ class MainScene extends Phaser.Scene {
         const tileIndex = this._getDiceTileIndex(this.engine.getDiceValue());
         if (tileIndex == null) {
             if (this.engine.canPlayerRoll(mode.getPlayer())) {
-                this.diceSprite = new BitmapButton(this, x, y, "font", 'Draw dice', 20).setOrigin(0.5, 0.5);
+                this.diceSprite = new BitmapButton(this, x, y, "font", 'Roll dice', gameOptions.fontSize).setOrigin(0.5, 0.5);
                 this.add.existing(this.diceSprite);
                 this.diceSprite.on('pointerdown', this._diceSelect, this);
             }
@@ -332,7 +333,7 @@ class MainScene extends Phaser.Scene {
         const x = 1.5 * gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows() + gameOptions.cellSize / 2;
         const y = gameOptions.boardOffset.y + gameOptions.cellSize * this.engine.getColumns() - gameOptions.cellSize / 2;
         if (this.engine.canPlayerMove(mode.getPlayer())) {
-            this.skipButton = new BitmapButton(this, x, y, "font", 'Skip turn', 20).setOrigin(0.5, 0.5);
+            this.skipButton = new BitmapButton(this, x, y, "font", 'Skip turn', gameOptions.fontSize).setOrigin(0.5, 0.5);
             this.add.existing(this.skipButton);
             this.skipButton.on('pointerdown', this._skipSelect, this);
         }
