@@ -159,12 +159,14 @@ class RemoteMode {
     _sendBoard() {
         const cells = engine.exportCells();
         const pawns = engine.exportPawns();
+        const storage = engine.exportStorage();
         this._send(JSON.stringify({
             player: this.getPlayer(),
             action: 'board',
             details: {
                 cells: cells,
                 pawns: pawns,
+                storage: storage,
                 dice: engine.getDiceValue(),
                 playing_team: engine.playingTeam
             }
@@ -242,6 +244,7 @@ class MainScene extends Phaser.Scene {
         this.engine = engine;
         this.cellSprites = [];
         this.animalSprites = [];
+        this.storageSprites = {};
         this.diceSprite = null;
         this.skipButton = null;
         this.canPlay = false;
@@ -271,6 +274,12 @@ class MainScene extends Phaser.Scene {
     }
 
     _drawField() {
+        this._drawCells();
+        this._drawPawns();
+        this._drawStorage();
+    }
+
+    _drawCells() {
         for (let i = 0; i < this.engine.getRows(); i ++) {
             this.cellSprites[i] = [];
             this.animalSprites[i] = [];
@@ -291,7 +300,17 @@ class MainScene extends Phaser.Scene {
                     duration: 1000,
                     delay: i * 200,
                 });
+            }
+        }
+    }
 
+    _drawPawns() {
+        for (let i = 0; i < this.engine.getRows(); i ++) {
+            this.cellSprites[i] = [];
+            this.animalSprites[i] = [];
+            for (let j = 0; j < this.engine.getColumns(); j ++) {
+                let gemX = gameOptions.boardOffset.x + gameOptions.cellSize * j + gameOptions.cellSize / 2;
+                let gemY = gameOptions.boardOffset.y + gameOptions.cellSize * i + gameOptions.cellSize / 2;
                 let pawn = this.engine.getPawnAt(i, j);
                 if (pawn != null) {
                     let animal =  this.add.sprite(gemX, gemY, pawn.team + "/" + pawn.animal);
@@ -307,6 +326,39 @@ class MainScene extends Phaser.Scene {
                         ease: 'Power2',
                         duration: 1000,
                         delay: i * 200,
+                    });
+                }
+            }
+        }
+    }
+
+    _drawStorage() {
+        for (let t = 0; t < this.engine.teams.length; t++) {
+            const team = this.engine.teams[t];
+            this.storageSprites[team] = [];
+            for (let j = 0; j < this.engine.getColumns(); j++) {
+                let gemX = gameOptions.boardOffset.x + gameOptions.cellSize * j + gameOptions.cellSize / 2;
+                let gemY = 0;
+                if (t === 0) {
+                    gemY = gameOptions.cellSize + gameOptions.cellSize / 2;
+                } else {
+                    gemY = gameOptions.boardOffset.y + gameOptions.cellSize * engineConfig.rows + gameOptions.cellSize / 2;
+                }
+                let pawn = this.engine.getStorageAt(j, team);
+                if (pawn != null) {
+                    let animal =  this.add.sprite(gemX, gemY, pawn.team + "/" + pawn.animal);
+                    animal.depth = 1; // TODO: better handling of depth (with groups)
+                    this.storageSprites[team][j] = animal;
+                    animal.scaleX = 0;
+                    animal.scaleY = 0;
+                    this.tweens.add({
+                        targets: animal,
+                        scaleX: 1,
+                        scaleY: 1,
+                        _ease: 'Sine.easeInOut',
+                        ease: 'Power2',
+                        duration: 1000,
+                        delay: t * 200,
                     });
                 }
             }
@@ -526,6 +578,7 @@ class GameEngine {
         this._dice = new Dice();
         this.gameArray = [];
         this.gamePawns = [];
+        this.pawnsStorage = {};
 
         this.selectedPawn = null;
         this.playingTeam = null;
@@ -535,12 +588,14 @@ class GameEngine {
     generateBoard() {
         this._generateGameArray();
         this._generateGamePawns();
+        this._generatePawnsStorage();
         this.playingTeam = this.teams[0];
     }
 
-    loadBoard(cells, pawns) {
+    loadBoard(cells, pawns, storage) {
         this.gameArray = cells;
         this.gamePawns = pawns.map(row => row.map(pawn => pawn != null ? new Pawn(pawn) : null));
+        this.pawnsStorage = storage;
     }
 
     exportCells() {
@@ -551,6 +606,10 @@ class GameEngine {
         return this.gamePawns;
     }
 
+    exportStorage() {
+        return this.pawnsStorage;
+    }
+
     _generateGameArray() {
         let cells = this._notSortedValuesForCells();
         for (let i = 0; i < this.rows; i++) {
@@ -558,6 +617,15 @@ class GameEngine {
             for (let j = 0; j < this.columns; j++) {
                 const randomIndex = Math.floor(Math.random() * cells.length);
                 this.gameArray[i][j] = cells.splice(randomIndex, 1)[0];
+            }
+        }
+    }
+
+    _generatePawnsStorage() {
+        for (let team of this.teams) {
+            this.pawnsStorage[team] = [];
+            for (let i = 0; i < this.animals.length; i++) {
+                this.pawnsStorage[team][i] = new Pawn({index: i, animal: this.animals[i], color: this.animalsColors[i], team: team});
             }
         }
     }
@@ -574,13 +642,7 @@ class GameEngine {
         for (let i = 0; i < this.rows; i++) {
             this.gamePawns[i] = [];
             for (let j = 0; j < this.columns; j++) {
-                if (i === 0) {
-                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], color: this.animalsColors[j], team: this.teams[0]});
-                } else if (i === this.rows - 1) {
-                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], color: this.animalsColors[j], team: this.teams[1]});
-                } else {
-                    this.gamePawns[i][j] = null;
-                }
+                this.gamePawns[i][j] = null;
             }
         }
     }
@@ -607,6 +669,10 @@ class GameEngine {
             return null;
         }
         return this.gamePawns[row][column];
+    }
+
+    getStorageAt(index, team) {
+        return this.pawnsStorage[team][index];
     }
 
     getNumberOfPawns(team) {
