@@ -231,7 +231,9 @@ class MainScene extends Phaser.Scene {
             frameHeight: gameOptions.cellSize
         });
         for (let animal of engineConfig.animals) {
-            let img = this.load.image(animal, STATIC_ROOT + 'assets/sprites/' + animal + '.png');
+            for (let team of engineConfig.teams) {
+                this.load.image(team + "/" + animal, STATIC_ROOT + 'assets/sprites/' + team + "/" + animal + '.png');
+            }
         }
         this.load.bitmapFont("font", STATIC_ROOT + "assets/fonts/font.png", STATIC_ROOT + "assets/fonts/font.fnt");
     }
@@ -292,10 +294,9 @@ class MainScene extends Phaser.Scene {
 
                 let pawn = this.engine.getPawnAt(i, j);
                 if (pawn != null) {
-                    let animal =  this.add.sprite(gemX, gemY, pawn.animal);
+                    let animal =  this.add.sprite(gemX, gemY, pawn.team + "/" + pawn.animal);
                     animal.depth = 1; // TODO: better handling of depth (with groups)
                     this.animalSprites[i][j] = animal;
-                    animal.tint = pawn.tint;
                     animal.scaleX = 0;
                     animal.scaleY = 0;
                     this.tweens.add({
@@ -383,7 +384,7 @@ class MainScene extends Phaser.Scene {
         const row = this.engine.selectedPawn.row;
         const col = this.engine.selectedPawn.col;
         const animalSprite = this.animalSprites[row][col];
-        animalSprite.setTint(0xffffff);
+        animalSprite.setTint(0xaaaaaa);
     }
 
     _removeSelectedPawnTint() {
@@ -393,7 +394,7 @@ class MainScene extends Phaser.Scene {
         const row = this.engine.selectedPawn.row;
         const col = this.engine.selectedPawn.col;
         const pawn = this.engine.getPawnAt(row, col);
-        this.animalSprites[row][col].tint = pawn?.tint;
+        this.animalSprites[row][col].tint = 0xffffff;
     }
 
     // UI Event
