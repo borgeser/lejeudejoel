@@ -21,7 +21,7 @@ const engineConfig = {
     rows: 5,
     columns: 5,
     items: 5,
-    teams: ["orange", "purple"],
+    teams: ["white", "black"],
     animals: ["mouse", "cat", "dog", "lion", "elephant"],
     animalsColors: [colors.GREY, colors.GREEN, colors.RED, colors.YELLOW, colors.BLUE]
 };
@@ -95,7 +95,7 @@ class RemoteMode {
     }
 
     isHost() {
-        return this.getPlayer() === "orange";
+        return this.getPlayer() === engineConfig.teams[0];
     }
 
     startWebSocket() {
@@ -108,7 +108,7 @@ class RemoteMode {
         );
         this.socket = socket;
 
-        // TODO: prevent two parallel players of the same kind (orange or purple)
+        // TODO: prevent two parallel players of the same kind (black or white)
 
         socket.onmessage = (e) => {
             console.log("New event: " + e.data);
