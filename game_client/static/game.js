@@ -21,7 +21,7 @@ const engineConfig = {
     rows: 5,
     columns: 5,
     items: 5,
-    teams: ["orange", "purple"],
+    teams: ["white", "black"],
     animals: ["mouse", "cat", "dog", "lion", "elephant"],
     animalsColors: [colors.GREY, colors.GREEN, colors.RED, colors.YELLOW, colors.BLUE]
 };
@@ -71,7 +71,9 @@ class LocalMode {
 
     // UI Events
 
-    onMove(startX, startY, endX, endY, player) {}
+    onMove(startX, startY, endX, endY) {}
+
+    onStorageMove(animalIndex, team, endX, endY) {}
 
     onSkip() {}
 
@@ -93,7 +95,7 @@ class RemoteMode {
     }
 
     isHost() {
-        return this.getPlayer() === "orange";
+        return this.getPlayer() === engineConfig.teams[0];
     }
 
     startWebSocket() {
@@ -106,7 +108,7 @@ class RemoteMode {
         );
         this.socket = socket;
 
-        // TODO: prevent two parallel players of the same kind (orange or purple)
+        // TODO: prevent two parallel players of the same kind (black or white)
 
         socket.onmessage = (e) => {
             console.log("New event: " + e.data);
@@ -121,6 +123,9 @@ class RemoteMode {
             } else if (data.action === "move") {
                 let details = data.details;
                 scene.moveFinished(details.before.x, details.before.y, details.after.x, details.after.y);
+            } else if (data.action === "storage_move") {
+                let details = data.details;
+                scene.storageMoveFinished(details.before.animalIndex, details.before.team, details.after.x, details.after.y);
             } else if (data.action === "skip") {
                 scene.skipGranted();
             } else if (data.action === "connect") {
@@ -159,12 +164,14 @@ class RemoteMode {
     _sendBoard() {
         const cells = engine.exportCells();
         const pawns = engine.exportPawns();
+        const storage = engine.exportStorage();
         this._send(JSON.stringify({
             player: this.getPlayer(),
             action: 'board',
             details: {
                 cells: cells,
                 pawns: pawns,
+                storage: storage,
                 dice: engine.getDiceValue(),
                 playing_team: engine.playingTeam
             }
@@ -191,6 +198,23 @@ class RemoteMode {
                 before: {
                     x: startX,
                     y: startY
+                },
+                after: {
+                    x: endX,
+                    y: endY
+                }
+            }
+        }));
+    }
+
+    onStorageMove(animalIndex, team, endX, endY) {
+        this._send(JSON.stringify({
+            player: this.getPlayer(),
+            action: 'storage_move',
+            details: {
+                before: {
+                    animalIndex: animalIndex,
+                    team: team
                 },
                 after: {
                     x: endX,
@@ -231,7 +255,9 @@ class MainScene extends Phaser.Scene {
             frameHeight: gameOptions.cellSize
         });
         for (let animal of engineConfig.animals) {
-            let img = this.load.image(animal, STATIC_ROOT + 'assets/sprites/' + animal + '.png');
+            for (let team of engineConfig.teams) {
+                this.load.image(team + "/" + animal, STATIC_ROOT + 'assets/sprites/' + team + "/" + animal + '.png');
+            }
         }
         this.load.bitmapFont("font", STATIC_ROOT + "assets/fonts/font.png", STATIC_ROOT + "assets/fonts/font.fnt");
     }
@@ -240,6 +266,7 @@ class MainScene extends Phaser.Scene {
         this.engine = engine;
         this.cellSprites = [];
         this.animalSprites = [];
+        this.storageSprites = {};
         this.diceSprite = null;
         this.skipButton = null;
         this.canPlay = false;
@@ -253,7 +280,7 @@ class MainScene extends Phaser.Scene {
         this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", gameOptions.fontSize);
         this.myPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 70, "font", "", gameOptions.fontSize);
         this._refreshPlayersTexts();
-        this.input.on("pointerdown", this._tileSelect, this);
+        this.input.on("pointerdown", this._pixelClicked, this);
         scene = this;
     }
 
@@ -269,12 +296,17 @@ class MainScene extends Phaser.Scene {
     }
 
     _drawField() {
+        this._drawCells();
+        this._drawPawns();
+        this._drawStorage();
+    }
+
+    _drawCells() {
         for (let i = 0; i < this.engine.getRows(); i ++) {
             this.cellSprites[i] = [];
-            this.animalSprites[i] = [];
             for (let j = 0; j < this.engine.getColumns(); j ++) {
-                let gemX = gameOptions.boardOffset.x + gameOptions.cellSize * j + gameOptions.cellSize / 2;
-                let gemY = gameOptions.boardOffset.y + gameOptions.cellSize * i + gameOptions.cellSize / 2;
+                let gemX = this._columnToPixelX(j);
+                let gemY = this._rowToPixelY(i);
                 const cellSprite = this.add.sprite(gemX, gemY, "tiles", this.engine.getCellAt(i, j));
                 cellSprite.scaleX = 0;
                 cellSprite.scaleY = 0;
@@ -289,13 +321,21 @@ class MainScene extends Phaser.Scene {
                     duration: 1000,
                     delay: i * 200,
                 });
+            }
+        }
+    }
 
+    _drawPawns() {
+        for (let i = 0; i < this.engine.getRows(); i ++) {
+            this.animalSprites[i] = [];
+            for (let j = 0; j < this.engine.getColumns(); j ++) {
+                let gemX = this._columnToPixelX(j);
+                let gemY = this._rowToPixelY(i);
                 let pawn = this.engine.getPawnAt(i, j);
                 if (pawn != null) {
-                    let animal =  this.add.sprite(gemX, gemY, pawn.animal);
+                    let animal =  this.add.sprite(gemX, gemY, pawn.team + "/" + pawn.animal);
                     animal.depth = 1; // TODO: better handling of depth (with groups)
                     this.animalSprites[i][j] = animal;
-                    animal.tint = pawn.tint;
                     animal.scaleX = 0;
                     animal.scaleY = 0;
                     this.tweens.add({
@@ -312,6 +352,34 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    _drawStorage() {
+        for (let t = 0; t < this.engine.teams.length; t++) {
+            const team = this.engine.teams[t];
+            this.storageSprites[team] = [];
+            for (let j = 0; j < this.engine.getColumns(); j++) {
+                let gemX = this._storageToPixelX(j);
+                let gemY = this._storageToPixelY(t);
+                let pawn = this.engine.getStorageAt(j, team);
+                if (pawn != null) {
+                    let animal =  this.add.sprite(gemX, gemY, pawn.team + "/" + pawn.animal);
+                    animal.depth = 1; // TODO: better handling of depth (with groups)
+                    this.storageSprites[team][j] = animal;
+                    animal.scaleX = 0;
+                    animal.scaleY = 0;
+                    this.tweens.add({
+                        targets: animal,
+                        scaleX: 1,
+                        scaleY: 1,
+                        _ease: 'Sine.easeInOut',
+                        ease: 'Power2',
+                        duration: 1000,
+                        delay: t * 200,
+                    });
+                }
+            }
+        }
+    }
+
     _drawDice() {
         this.diceSprite?.destroy();
         const x = 1.5 * gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows() + gameOptions.cellSize / 2;
@@ -321,7 +389,7 @@ class MainScene extends Phaser.Scene {
             if (this.engine.canPlayerRoll(mode.getPlayer())) {
                 this.diceSprite = new BitmapButton(this, x, y, "font", 'Roll dice', gameOptions.fontSize).setOrigin(0.5, 0.5);
                 this.add.existing(this.diceSprite);
-                this.diceSprite.on('pointerdown', this._diceSelect, this);
+                this.diceSprite.on('pointerdown', this._diceClicked, this);
             }
         } else {
             this.diceSprite = this.add.sprite(x, y, "tiles", tileIndex);
@@ -335,7 +403,7 @@ class MainScene extends Phaser.Scene {
         if (this.engine.canPlayerMove(mode.getPlayer())) {
             this.skipButton = new BitmapButton(this, x, y, "font", 'Skip turn', gameOptions.fontSize).setOrigin(0.5, 0.5);
             this.add.existing(this.skipButton);
-            this.skipButton.on('pointerdown', this._skipSelect, this);
+            this.skipButton.on('pointerdown', this._skipClicked, this);
         }
     }
 
@@ -379,26 +447,136 @@ class MainScene extends Phaser.Scene {
         });
     }
 
+    _storageMove(animalIndex, team, endRow, endCol) {
+        this.canPlay = false;
+        let targetCell = this.cellSprites[endRow][endCol];
+        let startSprite = this.storageSprites[team][animalIndex];
+        this.tweens.add({
+            targets: startSprite,
+            x: targetCell.x,
+            y: targetCell.y,
+            duration: 500,
+            onComplete: () => {
+                this.storageSprites[team][animalIndex] = null;
+                this.animalSprites[endRow][endCol]?.destroy();
+                this.animalSprites[endRow][endCol] = startSprite;
+                this.canPlay = true;
+            }
+        });
+    }
+
     _addSelectedPawnTint() {
-        const row = this.engine.selectedPawn.row;
-        const col = this.engine.selectedPawn.col;
-        const animalSprite = this.animalSprites[row][col];
-        animalSprite.setTint(0xffffff);
+        let animalSprite;
+        if (this.engine.selectedPawn.isStorage()) {
+            animalSprite = this.storageSprites[this.engine.selectedPawn.team][this.engine.selectedPawn.animalIndex];
+        } else {
+            animalSprite = this.animalSprites[this.engine.selectedPawn.row][this.engine.selectedPawn.col];
+        }
+        animalSprite.setTint(0xaaaaaa);
     }
 
     _removeSelectedPawnTint() {
         if (this.engine.selectedPawn == null) {
             return;
         }
-        const row = this.engine.selectedPawn.row;
-        const col = this.engine.selectedPawn.col;
-        const pawn = this.engine.getPawnAt(row, col);
-        this.animalSprites[row][col].tint = pawn?.tint;
+        let animalSprite;
+        if (this.engine.selectedPawn.isStorage()) {
+            animalSprite = this.storageSprites[this.engine.selectedPawn.team][this.engine.selectedPawn.animalIndex];
+        } else {
+            animalSprite = this.animalSprites[this.engine.selectedPawn.row][this.engine.selectedPawn.col];
+        }
+        animalSprite.setTint(0xffffff);
+    }
+
+    _pixelsToCoords(x, y) {
+        let row = Math.floor((y - gameOptions.boardOffset.y) / gameOptions.cellSize);
+        let col = Math.floor((x - gameOptions.boardOffset.x) / gameOptions.cellSize);
+        return {"row": row, "col": col};
+    }
+
+    _columnToPixelX(col) {
+        return gameOptions.boardOffset.x + gameOptions.cellSize * col + gameOptions.cellSize / 2;
+    }
+
+    _rowToPixelY(row) {
+        return gameOptions.boardOffset.y + gameOptions.cellSize * row + gameOptions.cellSize / 2;
+    }
+
+    _storageToPixelY(team_idx) {
+        if (team_idx === 0) {
+            return gameOptions.cellSize + gameOptions.cellSize / 2;
+        } else {
+            return gameOptions.boardOffset.y + gameOptions.cellSize * engineConfig.rows + gameOptions.cellSize / 2;
+        }
+    }
+
+    _storageToPixelX(animal_idx) {
+        return gameOptions.boardOffset.x + gameOptions.cellSize * animal_idx + gameOptions.cellSize / 2;
+    }
+
+    _isStorage(row, col) {
+        if (col < 0 || col >= engineConfig.columns) {
+            return false;
+        }
+        return row === -1 || row === engineConfig.rows;
+    }
+
+    _storageInfo(row, col) {
+        const animalIndex = col;
+        const teamIndex = row === -1 ? 0 : 1;
+        return {"animal_index": animalIndex, "team_index": teamIndex};
+    }
+
+    _tileSelection(row, col) {
+        if (!this.engine.canSelect(row, col)) {
+            return;
+        }
+        this.engine.selectedPawn = new SelectedPawn({ "row": row, "col": col });
+        this._addSelectedPawnTint();
+    }
+
+    _storageSelection(animalIndex, teamIndex) {
+        if (!this.engine.canSelectStorage(animalIndex, teamIndex)) {
+            return;
+        }
+        const team = this.engine.teams[teamIndex];
+        this.engine.selectedPawn = new SelectedPawn({ "animalIndex": animalIndex, "team": team });
+        this._addSelectedPawnTint();
+    }
+
+    _tileMovement(row, col) {
+        const startRow = this.engine.selectedPawn.row;
+        const startCol = this.engine.selectedPawn.col;
+        this._removeSelectedPawnTint();
+        this.engine.selectedPawn = null;
+        if (!this.engine.canMove(startRow, startCol, row, col)) {
+            return;
+        }
+        this._move(startRow, startCol, row, col);
+        this.engine.move(startRow, startCol, row, col);
+        this.engine.endTurn();
+        this._endTurn();
+        mode.onMove(startRow, startCol, row, col);
+    }
+
+    _storageMovement(row, col) {
+        const animalIndex = this.engine.selectedPawn.animalIndex;
+        const team = this.engine.selectedPawn.team;
+        this._removeSelectedPawnTint();
+        this.engine.selectedPawn = null;
+        if (!this.engine.canStorageMove(this.engine.getStorageAt(animalIndex, team), row, col)) {
+            return;
+        }
+        this._storageMove(animalIndex, team, row, col);
+        this.engine.storageMove(animalIndex, team, row, col);
+        this.engine.endTurn();
+        this._endTurn();
+        mode.onStorageMove(animalIndex, team, row, col);
     }
 
     // UI Event
 
-    _diceSelect() {
+    _diceClicked() {
         if (!this.canPlay || !this.engine.canPlayerRoll(mode.getPlayer())) {
             return;
         }
@@ -408,7 +586,7 @@ class MainScene extends Phaser.Scene {
         mode.onDiceRolled(this.engine.getDiceValue(), this.engine.playingTeam);
     }
 
-    _skipSelect() {
+    _skipClicked() {
         if (!this.canPlay || !this.engine.canPlayerMove(mode.getPlayer())) {
             return;
         }
@@ -419,41 +597,29 @@ class MainScene extends Phaser.Scene {
         mode.onSkip();
     }
 
-    _tileSelect(pointer) {
+    _pixelClicked(pointer) {
         if (!this.canPlay || !this.engine.canPlayerMove(mode.getPlayer())) {
             return;
         }
-        let row = Math.floor((pointer.y - gameOptions.boardOffset.y) / gameOptions.cellSize);
-        let col = Math.floor((pointer.x - gameOptions.boardOffset.x) / gameOptions.cellSize);
+        const coords = this._pixelsToCoords(pointer.x, pointer.y);
         if (this.engine.selectedPawn == null) {
-            if (!this.engine.canSelect(row, col)) {
-                return;
+            if (this._isStorage(coords.row, coords.col)) {
+                const info = this._storageInfo(coords.row, coords.col);
+                this._storageSelection(info.animal_index, info.team_index);
+            } else {
+                this._tileSelection(coords.row, coords.col);
             }
-            this.engine.selectedPawn = { "row": row, "col": col };
-            this._addSelectedPawnTint();
+        } else if (this.engine.selectedPawn.isStorage()) {
+            this._storageMovement(coords.row, coords.col);
         } else {
-            const startRow = this.engine.selectedPawn.row;
-            const startCol = this.engine.selectedPawn.col;
-            this._removeSelectedPawnTint();
-            this.engine.selectedPawn = null;
-            if (startRow === row && startCol === col) {
-                return;
-            }
-            if (!this.engine.canMove(startRow, startCol, row, col)) {
-                return;
-            }
-            this._move(startRow, startCol, row, col);
-            this.engine.move(startRow, startCol, row, col);
-            this.engine.endTurn();
-            this._endTurn();
-            mode.onMove(startRow, startCol, row, col);
+            this._tileMovement(coords.row, coords.col);
         }
     }
 
     // Socket Event
 
     boardReceived(info) {
-        this.engine.loadBoard(info.cells, info.pawns);
+        this.engine.loadBoard(info.cells, info.pawns, info.storage);
         this._drawField();
         this.engine.playingTeam = info.playing_team;
         this._refreshPlayersTexts();
@@ -472,6 +638,13 @@ class MainScene extends Phaser.Scene {
     moveFinished(startRow, startCol, endRow, endCol) {
         this._move(startRow, startCol, endRow, endCol);
         this.engine.move(startRow, startCol, endRow, endCol);
+        this.engine.endTurn();
+        this._endTurn();
+    }
+
+    storageMoveFinished(animalIndex, team, endRow, endCol) {
+        this._storageMove(animalIndex, team, endRow, endCol);
+        this.engine.storageMove(animalIndex, team, endRow, endCol);
         this.engine.endTurn();
         this._endTurn();
     }
@@ -512,6 +685,19 @@ class Pawn {
     }
 }
 
+class SelectedPawn {
+    constructor(params) {
+        this.row = params.row;
+        this.col = params.col;
+        this.animalIndex = params.animalIndex;
+        this.team = params.team;
+    }
+
+    isStorage() {
+        return this.animalIndex != null && this.team != null;
+    }
+}
+
 class GameEngine {
 
     constructor(obj) {
@@ -525,6 +711,7 @@ class GameEngine {
         this._dice = new Dice();
         this.gameArray = [];
         this.gamePawns = [];
+        this.pawnsStorage = {};
 
         this.selectedPawn = null;
         this.playingTeam = null;
@@ -534,12 +721,14 @@ class GameEngine {
     generateBoard() {
         this._generateGameArray();
         this._generateGamePawns();
+        this._generatePawnsStorage();
         this.playingTeam = this.teams[0];
     }
 
-    loadBoard(cells, pawns) {
+    loadBoard(cells, pawns, storage) {
         this.gameArray = cells;
         this.gamePawns = pawns.map(row => row.map(pawn => pawn != null ? new Pawn(pawn) : null));
+        this.pawnsStorage = storage;
     }
 
     exportCells() {
@@ -550,6 +739,10 @@ class GameEngine {
         return this.gamePawns;
     }
 
+    exportStorage() {
+        return this.pawnsStorage;
+    }
+
     _generateGameArray() {
         let cells = this._notSortedValuesForCells();
         for (let i = 0; i < this.rows; i++) {
@@ -557,6 +750,15 @@ class GameEngine {
             for (let j = 0; j < this.columns; j++) {
                 const randomIndex = Math.floor(Math.random() * cells.length);
                 this.gameArray[i][j] = cells.splice(randomIndex, 1)[0];
+            }
+        }
+    }
+
+    _generatePawnsStorage() {
+        for (let team of this.teams) {
+            this.pawnsStorage[team] = [];
+            for (let i = 0; i < this.animals.length; i++) {
+                this.pawnsStorage[team][i] = new Pawn({index: i, animal: this.animals[i], color: this.animalsColors[i], team: team});
             }
         }
     }
@@ -573,13 +775,7 @@ class GameEngine {
         for (let i = 0; i < this.rows; i++) {
             this.gamePawns[i] = [];
             for (let j = 0; j < this.columns; j++) {
-                if (i === 0) {
-                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], color: this.animalsColors[j], team: this.teams[0]});
-                } else if (i === this.rows - 1) {
-                    this.gamePawns[i][j] = new Pawn({index: j, animal: this.animals[j], color: this.animalsColors[j], team: this.teams[1]});
-                } else {
-                    this.gamePawns[i][j] = null;
-                }
+                this.gamePawns[i][j] = null;
             }
         }
     }
@@ -608,6 +804,10 @@ class GameEngine {
         return this.gamePawns[row][column];
     }
 
+    getStorageAt(index, team) {
+        return this.pawnsStorage[team][index];
+    }
+
     getNumberOfPawns(team) {
         return this.gamePawns.reduce((acc, row) => acc + row.reduce((acc2, pawn) => acc2 + (pawn?.team === team ? 1 : 0), 0), 0);
     }
@@ -618,7 +818,12 @@ class GameEngine {
     }
 
     canMove(startRow, startCol, endRow, endCol) {
-        const currentColor = this.getDiceValue();
+        if (startRow === endRow && startCol === endCol) {
+            return false;
+        }
+        if (!this.validPick(startRow, startCol) || !this.validPick(endRow, endCol)) {
+            return false;
+        }
         if (!this.isAdjacent(startRow, startCol, endRow, endCol)) {
             return false;
         }
@@ -633,6 +838,7 @@ class GameEngine {
         if (!startPawn.canBeat(endPawn)) {
             return false;
         }
+        const currentColor = this.getDiceValue();
         if (currentColor === -1) {
             return true
         }
@@ -640,14 +846,46 @@ class GameEngine {
             || startPawn.color === currentColor;
     }
 
+    canStorageMove(startPawn, endRow, endCol) {
+        if (!this.validPick(endRow, endCol)) {
+            return false;
+        }
+        if (startPawn == null) {
+            return false;
+        }
+        if (startPawn.team !== this.playingTeam) {
+            return false;
+        }
+        const endPawn = this.getPawnAt(endRow, endCol);
+        if (endPawn != null) {
+            return false;
+        }
+        const currentColor = this.getDiceValue();
+        if (currentColor === -1) {
+            return true
+        }
+        return startPawn.color === currentColor;
+    }
+
     canSelect(row, col) {
         const pawn = this.getPawnAt(row, col);
         return pawn != null && pawn.team === this.playingTeam;
     }
 
+    canSelectStorage(animalIndex, teamIndex) {
+        const team = this.teams[teamIndex];
+        const pawn = this.pawnsStorage[team][animalIndex];
+        return pawn !== null && pawn.team === team && team === this.playingTeam;
+    }
+
     move(startRow, startCol, endRow, endCol) {
         this.gamePawns[endRow][endCol] = this.getPawnAt(startRow, startCol);
         this.gamePawns[startRow][startCol] = null;
+    }
+
+    storageMove(animalIndex, team, endRow, endCol) {
+        this.gamePawns[endRow][endCol] = this.getStorageAt(animalIndex, team);
+        this.pawnsStorage[team][animalIndex] = null;
     }
 
     isAdjacent(startRow, startCol, endRow, endCol) {
