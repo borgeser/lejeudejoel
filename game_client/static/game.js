@@ -304,7 +304,6 @@ class MainScene extends Phaser.Scene {
     _drawCells() {
         for (let i = 0; i < this.engine.getRows(); i ++) {
             this.cellSprites[i] = [];
-            this.animalSprites[i] = [];
             for (let j = 0; j < this.engine.getColumns(); j ++) {
                 let gemX = this._columnToPixelX(j);
                 let gemY = this._rowToPixelY(i);
@@ -328,7 +327,6 @@ class MainScene extends Phaser.Scene {
 
     _drawPawns() {
         for (let i = 0; i < this.engine.getRows(); i ++) {
-            this.cellSprites[i] = [];
             this.animalSprites[i] = [];
             for (let j = 0; j < this.engine.getColumns(); j ++) {
                 let gemX = this._columnToPixelX(j);
@@ -551,9 +549,6 @@ class MainScene extends Phaser.Scene {
         const startCol = this.engine.selectedPawn.col;
         this._removeSelectedPawnTint();
         this.engine.selectedPawn = null;
-        if (startRow === row && startCol === col) {
-            return;
-        }
         if (!this.engine.canMove(startRow, startCol, row, col)) {
             return;
         }
@@ -569,7 +564,7 @@ class MainScene extends Phaser.Scene {
         const team = this.engine.selectedPawn.team;
         this._removeSelectedPawnTint();
         this.engine.selectedPawn = null;
-        if (!this.engine.canStorageMove(this.engine.getStorageAt(animalIndex, team), this.engine.getPawnAt(row, col))) {
+        if (!this.engine.canStorageMove(this.engine.getStorageAt(animalIndex, team), row, col)) {
             return;
         }
         this._storageMove(animalIndex, team, row, col);
@@ -823,7 +818,12 @@ class GameEngine {
     }
 
     canMove(startRow, startCol, endRow, endCol) {
-        const currentColor = this.getDiceValue();
+        if (startRow === endRow && startCol === endCol) {
+            return false;
+        }
+        if (!this.validPick(startRow, startCol) || !this.validPick(endRow, endCol)) {
+            return false;
+        }
         if (!this.isAdjacent(startRow, startCol, endRow, endCol)) {
             return false;
         }
@@ -838,6 +838,7 @@ class GameEngine {
         if (!startPawn.canBeat(endPawn)) {
             return false;
         }
+        const currentColor = this.getDiceValue();
         if (currentColor === -1) {
             return true
         }
@@ -845,14 +846,21 @@ class GameEngine {
             || startPawn.color === currentColor;
     }
 
-    canStorageMove(startPawn, endPawn) {
-        const currentColor = this.getDiceValue();
+    canStorageMove(startPawn, endRow, endCol) {
+        if (!this.validPick(endRow, endCol)) {
+            return false;
+        }
+        if (startPawn == null) {
+            return false;
+        }
         if (startPawn.team !== this.playingTeam) {
             return false;
         }
+        const endPawn = this.getPawnAt(endRow, endCol);
         if (endPawn != null) {
             return false;
         }
+        const currentColor = this.getDiceValue();
         if (currentColor === -1) {
             return true
         }
