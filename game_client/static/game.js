@@ -619,7 +619,7 @@ class MainScene extends Phaser.Scene {
     // Socket Event
 
     boardReceived(info) {
-        this.engine.loadBoard(info.cells, info.pawns);
+        this.engine.loadBoard(info.cells, info.pawns, info.storage);
         this._drawField();
         this.engine.playingTeam = info.playing_team;
         this._refreshPlayersTexts();
