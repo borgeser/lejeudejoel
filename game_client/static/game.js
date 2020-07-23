@@ -284,8 +284,8 @@ class MainScene extends Phaser.Scene {
             this.cellSprites[i] = [];
             this.animalSprites[i] = [];
             for (let j = 0; j < this.engine.getColumns(); j ++) {
-                let gemX = gameOptions.boardOffset.x + gameOptions.cellSize * j + gameOptions.cellSize / 2;
-                let gemY = gameOptions.boardOffset.y + gameOptions.cellSize * i + gameOptions.cellSize / 2;
+                let gemX = this._columnToPixelX(j);
+                let gemY = this._rowToPixelY(i);
                 const cellSprite = this.add.sprite(gemX, gemY, "tiles", this.engine.getCellAt(i, j));
                 cellSprite.scaleX = 0;
                 cellSprite.scaleY = 0;
@@ -309,8 +309,8 @@ class MainScene extends Phaser.Scene {
             this.cellSprites[i] = [];
             this.animalSprites[i] = [];
             for (let j = 0; j < this.engine.getColumns(); j ++) {
-                let gemX = gameOptions.boardOffset.x + gameOptions.cellSize * j + gameOptions.cellSize / 2;
-                let gemY = gameOptions.boardOffset.y + gameOptions.cellSize * i + gameOptions.cellSize / 2;
+                let gemX = this._columnToPixelX(j);
+                let gemY = this._rowToPixelY(i);
                 let pawn = this.engine.getPawnAt(i, j);
                 if (pawn != null) {
                     let animal =  this.add.sprite(gemX, gemY, pawn.team + "/" + pawn.animal);
@@ -337,13 +337,8 @@ class MainScene extends Phaser.Scene {
             const team = this.engine.teams[t];
             this.storageSprites[team] = [];
             for (let j = 0; j < this.engine.getColumns(); j++) {
-                let gemX = gameOptions.boardOffset.x + gameOptions.cellSize * j + gameOptions.cellSize / 2;
-                let gemY = 0;
-                if (t === 0) {
-                    gemY = gameOptions.cellSize + gameOptions.cellSize / 2;
-                } else {
-                    gemY = gameOptions.boardOffset.y + gameOptions.cellSize * engineConfig.rows + gameOptions.cellSize / 2;
-                }
+                let gemX = this._storageToPixelX(j);
+                let gemY = this._storageToPixelY(t);
                 let pawn = this.engine.getStorageAt(j, team);
                 if (pawn != null) {
                     let animal =  this.add.sprite(gemX, gemY, pawn.team + "/" + pawn.animal);
@@ -449,6 +444,32 @@ class MainScene extends Phaser.Scene {
         this.animalSprites[row][col].tint = 0xffffff;
     }
 
+    _pixelsToCoords(x, y) {
+        let row = Math.floor((y - gameOptions.boardOffset.y) / gameOptions.cellSize);
+        let col = Math.floor((x - gameOptions.boardOffset.x) / gameOptions.cellSize);
+        return {"row": row, "col": col};
+    }
+
+    _columnToPixelX(col) {
+        return gameOptions.boardOffset.x + gameOptions.cellSize * col + gameOptions.cellSize / 2;
+    }
+
+    _rowToPixelY(row) {
+        return gameOptions.boardOffset.y + gameOptions.cellSize * row + gameOptions.cellSize / 2;
+    }
+
+    _storageToPixelY(team_idx) {
+        if (team_idx === 0) {
+            return gameOptions.cellSize + gameOptions.cellSize / 2;
+        } else {
+            return gameOptions.boardOffset.y + gameOptions.cellSize * engineConfig.rows + gameOptions.cellSize / 2;
+        }
+    }
+
+    _storageToPixelX(animal_idx) {
+        return gameOptions.boardOffset.x + gameOptions.cellSize * animal_idx + gameOptions.cellSize / 2;
+    }
+
     // UI Event
 
     _diceSelect() {
@@ -476,8 +497,9 @@ class MainScene extends Phaser.Scene {
         if (!this.canPlay || !this.engine.canPlayerMove(mode.getPlayer())) {
             return;
         }
-        let row = Math.floor((pointer.y - gameOptions.boardOffset.y) / gameOptions.cellSize);
-        let col = Math.floor((pointer.x - gameOptions.boardOffset.x) / gameOptions.cellSize);
+        const coords = this._pixelsToCoords(pointer.x, pointer.y);
+        let row = coords.row;
+        let col = coords.col;
         if (this.engine.selectedPawn == null) {
             if (!this.engine.canSelect(row, col)) {
                 return;
