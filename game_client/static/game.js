@@ -283,8 +283,20 @@ class MainScene extends Phaser.Scene {
         }
         this._drawDice();
         this._drawSkipTurn();
-        this.currentPlayerText = this.add.bitmapText(this._boardTotalOffset().x, 20, "font", "", gameOptions.fontSize);
-        this.myPlayerText = this.add.bitmapText(this._boardTotalOffset().x, 70, "font", "", gameOptions.fontSize);
+        this.currentPlayerText = this.add.bitmapText(
+            this._boardTotalOffset().x,
+            gameOptions.padding.y,
+            "font",
+            "",
+            gameOptions.fontSize
+        );
+        this.myPlayerText = this.add.bitmapText(
+            this._boardTotalOffset().x,
+            gameOptions.height - gameOptions.padding.y - gameOptions.fontSize,
+            "font",
+            "",
+            gameOptions.fontSize
+        );
         this._refreshPlayersTexts();
         this.input.on("pointerdown", this._pixelClicked, this);
         scene = this;
