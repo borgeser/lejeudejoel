@@ -440,11 +440,49 @@ class MainScene extends Phaser.Scene {
         if (this.engine.isGameFinished()) {
             const winner = this.engine.getWinningTeam();
             this.currentPlayerText.text = "Player " + winner + ", you win!";
+            this._startVictoryAnimation(winner);
             return;
         }
         this._drawDice();
         this._drawSkipTurn();
         this._refreshPlayersTexts();
+    }
+
+    _startVictoryAnimation(winner) {
+        for (let row = 0; row < this.engine.getRows(); row++) {
+            for (let col = 0; col < this.engine.getColumns(); col++) {
+                const pawn = this.engine.getPawnAt(row, col);
+                if (pawn != null && pawn.team !== winner) {
+                    const sprite = this.animalSprites[row][col];
+                    this.tweens.add({
+                        targets: sprite,
+                        scaleX: 0,
+                        scaleY: 0,
+                        angle: 180,
+                        _ease: 'Sine.easeInOut',
+                        ease: 'Power2',
+                        duration: 2000
+                    });
+                }
+            }
+        }
+        for (let team of engineConfig.teams) {
+            if (team !== winner) {
+                for (let sprite of this.storageSprites[team]) {
+                    if (sprite != null) {
+                        this.tweens.add({
+                            targets: sprite,
+                            scaleX: 0,
+                            scaleY: 0,
+                            angle: 180,
+                            _ease: 'Sine.easeInOut',
+                            ease: 'Power2',
+                            duration: 2000
+                        });
+                    }
+                }
+            }
+        }
     }
 
     _boardTotalOffset() {
