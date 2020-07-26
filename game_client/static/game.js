@@ -30,12 +30,12 @@ const engineConfig = {
 
 const gameOptions = {
     cellSize: 256,
-    fontSize: 36,
+    fontSize: 64,
     boardOffset: {
-        x: 512,
+        x: 128,
         y: 512
     },
-    width: 2304,
+    width: 1920,
     height: 2304,
 };
 
@@ -384,12 +384,14 @@ class MainScene extends Phaser.Scene {
 
     _drawDice() {
         this.diceSprite?.destroy();
-        const x = 1.5 * gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows() + gameOptions.cellSize / 2;
+        const xOffset = gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows();
+        const remainingSpace = gameOptions.width - xOffset;
+        const x = remainingSpace / 2 +  xOffset;
         const y = gameOptions.boardOffset.y + gameOptions.cellSize * Math.floor(this.engine.getColumns() / 2) + gameOptions.cellSize / 2;
         const tileIndex = this._getDiceTileIndex(this.engine.getDiceValue());
         if (tileIndex == null) {
             if (this.engine.canPlayerRoll(mode.getPlayer())) {
-                this.diceSprite = new BitmapButton(this, x, y, "font", 'Roll dice', gameOptions.fontSize).setOrigin(0.5, 0.5);
+                this.diceSprite = new BitmapButton(this, x, y, "font", 'ROLL', gameOptions.fontSize).setOrigin(0.5, 0.5);
                 this.add.existing(this.diceSprite);
                 this.diceSprite.on('pointerdown', this._diceClicked, this);
             }
@@ -400,10 +402,11 @@ class MainScene extends Phaser.Scene {
 
     _drawSkipTurn() {
         this.skipButton?.destroy();
-        const x = 1.5 * gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows() + gameOptions.cellSize / 2;
-        const y = gameOptions.boardOffset.y + gameOptions.cellSize * this.engine.getColumns() - gameOptions.cellSize / 2;
+        const xOffset = gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows();
+        const remainingSpace = gameOptions.width - xOffset;
+        const x = remainingSpace / 2 +  xOffset;        const y = gameOptions.boardOffset.y + gameOptions.cellSize * this.engine.getColumns() - gameOptions.cellSize / 2;
         if (this.engine.canPlayerMove(mode.getPlayer())) {
-            this.skipButton = new BitmapButton(this, x, y, "font", 'Skip turn', gameOptions.fontSize).setOrigin(0.5, 0.5);
+            this.skipButton = new BitmapButton(this, x, y, "font", 'SKIP', gameOptions.fontSize).setOrigin(0.5, 0.5);
             this.add.existing(this.skipButton);
             this.skipButton.on('pointerdown', this._skipClicked, this);
         }
