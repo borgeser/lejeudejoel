@@ -422,7 +422,7 @@ class MainScene extends Phaser.Scene {
         const remainingSpace = gameOptions.width - xOffset;
         const x = remainingSpace / 2 +  xOffset;
         const y = this._boardTotalOffset().y + this._boardHeight() - gameOptions.cellSize / 2;
-        if (this.engine.canPlayerMove(mode.getPlayer())) {
+        if (this.engine.canPlayerMove(mode.getPlayer()) && !this.engine.hasCurrentPlayerAPossibleMove()) {
             this.skipButton = new BitmapButton(this, x, y, "font", 'SKIP', gameOptions.fontSize).setOrigin(0.5, 0.5);
             this.add.existing(this.skipButton);
             this.skipButton.on('pointerdown', this._skipClicked, this);

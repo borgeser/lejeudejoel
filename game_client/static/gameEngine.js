@@ -220,6 +220,33 @@ export class GameEngine {
         return team === this.playingTeam && this.isDiceRolled();
     }
 
+    hasCurrentPlayerAPossibleMove() {
+        const currentColor = this._dice.value;
+        const team = this.playingTeam;
+        for (let i = 0; i < this.pawnsStorage[team].length; i++) {
+            const pawn = this.pawnsStorage[team][i];
+            if (this.canSelectStorage(i, team) && (currentColor === -1 || pawn.color === currentColor)) {
+                return true;
+            }
+        }
+        for (let i = 0; i < this.rows; i++) {
+            for (let j = 0; j < this.columns; j++) {
+                if (
+                    this.canSelect(i, j) &&
+                    (
+                        this.canMove(i, j, i-1, j) ||
+                        this.canMove(i, j, i+1, j) ||
+                        this.canMove(i, j, i, j-1) ||
+                        this.canMove(i, j, i, j+1)
+                    )
+                ) {
+                    return true;
+                }
+            }
+        }
+        return false
+    }
+
     isDiceRolled() {
         return this._dice.value != null;
     }
