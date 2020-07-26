@@ -32,8 +32,12 @@ const gameOptions = {
     cellSize: 256,
     fontSize: 64,
     boardOffset: {
+        x: 0,
+        y: 384
+    },
+    padding: {
         x: 128,
-        y: 512
+        y: 128
     },
     width: 1920,
     height: 2304,
@@ -279,8 +283,8 @@ class MainScene extends Phaser.Scene {
         }
         this._drawDice();
         this._drawSkipTurn();
-        this.currentPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 20, "font", "", gameOptions.fontSize);
-        this.myPlayerText = this.add.bitmapText(gameOptions.boardOffset.x, 70, "font", "", gameOptions.fontSize);
+        this.currentPlayerText = this.add.bitmapText(this._boardTotalOffset().x, 20, "font", "", gameOptions.fontSize);
+        this.myPlayerText = this.add.bitmapText(this._boardTotalOffset().x, 70, "font", "", gameOptions.fontSize);
         this._refreshPlayersTexts();
         this.input.on("pointerdown", this._pixelClicked, this);
         scene = this;
@@ -384,10 +388,10 @@ class MainScene extends Phaser.Scene {
 
     _drawDice() {
         this.diceSprite?.destroy();
-        const xOffset = gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows();
+        const xOffset = this._boardTotalOffset().x + this._boardWidth();
         const remainingSpace = gameOptions.width - xOffset;
         const x = remainingSpace / 2 +  xOffset;
-        const y = gameOptions.boardOffset.y + gameOptions.cellSize * Math.floor(this.engine.getColumns() / 2) + gameOptions.cellSize / 2;
+        const y = this._boardTotalOffset().y + gameOptions.cellSize * Math.floor(this.engine.getColumns() / 2) + gameOptions.cellSize / 2;
         const tileIndex = this._getDiceTileIndex(this.engine.getDiceValue());
         if (tileIndex == null) {
             if (this.engine.canPlayerRoll(mode.getPlayer())) {
@@ -402,9 +406,10 @@ class MainScene extends Phaser.Scene {
 
     _drawSkipTurn() {
         this.skipButton?.destroy();
-        const xOffset = gameOptions.boardOffset.x + gameOptions.cellSize * this.engine.getRows();
+        const xOffset = this._boardTotalOffset().x + this._boardWidth();
         const remainingSpace = gameOptions.width - xOffset;
-        const x = remainingSpace / 2 +  xOffset;        const y = gameOptions.boardOffset.y + gameOptions.cellSize * this.engine.getColumns() - gameOptions.cellSize / 2;
+        const x = remainingSpace / 2 +  xOffset;
+        const y = this._boardTotalOffset().y + this._boardHeight() - gameOptions.cellSize / 2;
         if (this.engine.canPlayerMove(mode.getPlayer())) {
             this.skipButton = new BitmapButton(this, x, y, "font", 'SKIP', gameOptions.fontSize).setOrigin(0.5, 0.5);
             this.add.existing(this.skipButton);
@@ -423,6 +428,21 @@ class MainScene extends Phaser.Scene {
         this._drawDice();
         this._drawSkipTurn();
         this._refreshPlayersTexts();
+    }
+
+    _boardTotalOffset() {
+        return {
+            x: gameOptions.boardOffset.x + gameOptions.padding.x,
+            y: gameOptions.boardOffset.y + gameOptions.padding.y
+        };
+    }
+
+    _boardWidth() {
+        return gameOptions.cellSize * this.engine.getRows();
+    }
+
+    _boardHeight() {
+        return gameOptions.cellSize * this.engine.getColumns();
     }
 
     _refreshPlayersTexts() {
@@ -494,29 +514,29 @@ class MainScene extends Phaser.Scene {
     }
 
     _pixelsToCoords(x, y) {
-        let row = Math.floor((y - gameOptions.boardOffset.y) / gameOptions.cellSize);
-        let col = Math.floor((x - gameOptions.boardOffset.x) / gameOptions.cellSize);
+        let row = Math.floor((y - this._boardTotalOffset().y) / gameOptions.cellSize);
+        let col = Math.floor((x - this._boardTotalOffset().x) / gameOptions.cellSize);
         return {"row": row, "col": col};
     }
 
     _columnToPixelX(col) {
-        return gameOptions.boardOffset.x + gameOptions.cellSize * col + gameOptions.cellSize / 2;
+        return this._boardTotalOffset().x + gameOptions.cellSize * col + gameOptions.cellSize / 2;
     }
 
     _rowToPixelY(row) {
-        return gameOptions.boardOffset.y + gameOptions.cellSize * row + gameOptions.cellSize / 2;
+        return this._boardTotalOffset().y + gameOptions.cellSize * row + gameOptions.cellSize / 2;
     }
 
     _storageToPixelY(team_idx) {
         if (team_idx === 0) {
             return gameOptions.cellSize + gameOptions.cellSize / 2;
         } else {
-            return gameOptions.boardOffset.y + gameOptions.cellSize * engineConfig.rows + gameOptions.cellSize / 2;
+            return this._boardTotalOffset().y + gameOptions.cellSize * engineConfig.rows + gameOptions.cellSize / 2;
         }
     }
 
     _storageToPixelX(animal_idx) {
-        return gameOptions.boardOffset.x + gameOptions.cellSize * animal_idx + gameOptions.cellSize / 2;
+        return this._boardTotalOffset().x + gameOptions.cellSize * animal_idx + gameOptions.cellSize / 2;
     }
 
     _isStorage(row, col) {
