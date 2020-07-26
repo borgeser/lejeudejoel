@@ -437,6 +437,11 @@ class MainScene extends Phaser.Scene {
     }
 
     _endTurn() {
+        if (this.engine.isGameFinished()) {
+            const winner = this.engine.getWinningTeam();
+            this.currentPlayerText.text = "Player " + winner + ", you win!";
+            return;
+        }
         this._drawDice();
         this._drawSkipTurn();
         this._refreshPlayersTexts();

@@ -121,6 +121,10 @@ export class GameEngine {
         return this.gamePawns.reduce((acc, row) => acc + row.reduce((acc2, pawn) => acc2 + (pawn?.team === team ? 1 : 0), 0), 0);
     }
 
+    getNumberInStorage(team) {
+        return this.pawnsStorage[team].filter(p => p != null).length;
+    }
+
     // returns true if the item at (row, column) is a valid pick
     validPick(row, column) {
         return row >= 0 && row < this.rows && column >= 0 && column < this.columns;
@@ -258,7 +262,10 @@ export class GameEngine {
 
     getWinningTeam() {
         for (let index = 0; index < this.teams.length; index++) {
-            if (this.getNumberOfPawns(this.teams[index]) <= 2) {
+            const team = this.teams[index];
+            const pawnsOnBoard = this.getNumberOfPawns(team);
+            const pawnsOnStorage = this.getNumberInStorage(team);
+            if (pawnsOnBoard + pawnsOnStorage <= 2) {
                 const nextIndex = (index + 1) % this.teams.length;
                 return this.teams[nextIndex];
             }
