@@ -180,8 +180,7 @@ export class GameEngine {
         return pawn != null && pawn.team === this.playingTeam;
     }
 
-    canSelectStorage(animalIndex, teamIndex) {
-        const team = this.teams[teamIndex];
+    canSelectStorage(animalIndex, team) {
         const pawn = this.pawnsStorage[team][animalIndex];
         return pawn !== null && pawn.team === team && team === this.playingTeam;
     }

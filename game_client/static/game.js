@@ -573,10 +573,10 @@ class MainScene extends Phaser.Scene {
     }
 
     _storageSelection(animalIndex, teamIndex) {
-        if (!this.engine.canSelectStorage(animalIndex, teamIndex)) {
+        const team = this.engine.teams[teamIndex];
+        if (!this.engine.canSelectStorage(animalIndex, team)) {
             return;
         }
-        const team = this.engine.teams[teamIndex];
         this.engine.selectedPawn = new SelectedPawn({ "animalIndex": animalIndex, "team": team });
         this._addSelectedPawnTint();
     }
