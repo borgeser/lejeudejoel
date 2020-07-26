@@ -64,6 +64,7 @@ export class GameEngine {
                 this.pawnsStorage[team][i] = new Pawn({
                     index: i,
                     animal: this.animals[i],
+                    lastAnimalIndex: this.animals.length - 1,
                     color: this.animalsColors[i],
                     team: team
                 });

@@ -1,6 +1,7 @@
 export class Pawn {
     constructor(params) {
         this.index = params.index;
+        this.lastAnimalIndex = params.lastAnimalIndex;
         this.animal = params.animal;
         this.color = params.color;
         this.team = params.team;
@@ -20,8 +21,7 @@ export class Pawn {
         if (this.team === other.team) {
             return false;
         }
-        // TODO: remove ref of engineConfig
-        if (this.index === 0 && other.index === engineConfig.animals.length - 1) {
+        if (this.index === 0 && other.index === this.lastAnimalIndex) {
             return true;
         }
         return this.index === other.index + 1;
