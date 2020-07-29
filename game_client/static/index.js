@@ -4,14 +4,12 @@ const STATIC_ROOT = "/static/";
 
 let game;
 
-const gameOptions = {
-    cellSize: 80,
-    boardOffset: {
-        x: 160,
-        y: 140
-    },
-    width: 800,
-    height: 600,
+const params = {
+    fontSize: 64,
+    smallFontSize: 48,
+    width: 1920,
+    height: 2304,
+    lineHeight: 128,
 };
 
 window.onload = function() {
@@ -22,8 +20,8 @@ window.onload = function() {
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH,
             parent: "thegame",
-            width: gameOptions.width,
-            height: gameOptions.height
+            width: params.width,
+            height: params.height
         },
         scene: [CommunicationScene, ShareUrlScene]
     };
@@ -42,11 +40,14 @@ class CommunicationScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.bitmapText(gameOptions.width / 2, 50, "font", "Select playing mode", 20).setOrigin(0.5, 0.5);
-        const localButton = new BitmapButton(this, gameOptions.width / 2, 200, "font", 'Local', 20).setOrigin(0.5, 0.5);
+        this.add.bitmapText(params.width / 2, params.lineHeight, "font", "Select playing mode", params.fontSize)
+            .setOrigin(0.5, 0.5);
+        const localButton = new BitmapButton(this, params.width / 2, params.lineHeight * 4, "font", 'Local', params.fontSize)
+            .setOrigin(0.5, 0.5);
         this.add.existing(localButton);
         localButton.on('pointerup', this.local, this);
-        const remoteButton = new BitmapButton(this, gameOptions.width / 2, 250, "font", 'Remote', 20).setOrigin(0.5, 0.5);
+        const remoteButton = new BitmapButton(this, params.width / 2, params.lineHeight * 5, "font", 'Remote', params.fontSize)
+            .setOrigin(0.5, 0.5);
         this.add.existing(remoteButton);
         remoteButton.on('pointerup', this.remote, this);
     }
@@ -88,16 +89,18 @@ class ShareUrlScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.bitmapText(gameOptions.width / 2, 50, "font", "Share your url to your friend:", 20)
+        this.add.bitmapText(params.width / 2, params.lineHeight, "font", "Share your url to your friend:", params.fontSize)
                 .setOrigin(0.5, 0,5);
-        this.add.bitmapText(gameOptions.width / 2, 100, "font", this.shareUrl, 20)
+        this.add.bitmapText(params.width / 2, params.lineHeight * 2, "font", this.shareUrl, params.smallFontSize)
                 .setOrigin(0.5, 0,5)
-                .setMaxWidth(gameOptions.width, 47); // 47 is the '/' character in ASCII
+                .setMaxWidth(params.width, 47); // 47 is the '/' character in ASCII
 
-        const copyButton = new BitmapButton(this, gameOptions.width / 2, 250, "font", 'Copy URL', 20).setOrigin(0.5, 0.5);
+        const copyButton = new BitmapButton(this, params.width / 2, params.lineHeight * 5, "font", 'Copy URL', params.fontSize)
+            .setOrigin(0.5, 0.5);
         this.add.existing(copyButton);
         copyButton.on('pointerup', this.copyUrl, this);
-        const goButton = new BitmapButton(this, gameOptions.width / 2, 300, "font", 'Go!', 20).setOrigin(0.5, 0.5);
+        const goButton = new BitmapButton(this, params.width / 2, params.lineHeight * 6, "font", 'Go!', params.fontSize)
+            .setOrigin(0.5, 0.5);
         this.add.existing(goButton);
         goButton.on('pointerup', this.goToGame, this);
     }
