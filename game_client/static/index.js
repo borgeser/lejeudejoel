@@ -33,6 +33,8 @@ window.onload = function() {
 class CommunicationScene extends Phaser.Scene {
     constructor() {
         super("CommunicationScene");
+        this.colorProtection = false;
+        this.withDice = true;
     }
 
     preload() {
@@ -40,13 +42,45 @@ class CommunicationScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.bitmapText(params.width / 2, params.lineHeight, "font", "Select playing mode", params.fontSize)
+        this.createColorProtectionSection(2);
+        this.createDifficultySection(6);
+        this.createPlayingModeSection(12);
+    }
+
+    createColorProtectionSection(offset) {
+        this.add.bitmapText(params.width / 2, params.lineHeight * offset, "font", "Color protection", params.fontSize)
             .setOrigin(0.5, 0.5);
-        const localButton = new BitmapButton(this, params.width / 2, params.lineHeight * 4, "font", 'Local', params.fontSize)
+        const avancedOn = new BitmapButton(this, params.width / 2, params.lineHeight * (offset + 1), "font", 'ON', params.fontSize)
+            .setOrigin(0.5, 0.5);
+        this.add.existing(avancedOn);
+        avancedOn.on('pointerup', () => this.withDice = false);
+        const avancedOff = new BitmapButton(this, params.width / 2, params.lineHeight * (offset + 2), "font", 'OFF', params.fontSize)
+            .setOrigin(0.5, 0.5);
+        this.add.existing(avancedOff);
+        avancedOff.on('pointerup', () => this.withDice = true);
+    }
+
+    createDifficultySection(offset) {
+        this.add.bitmapText(params.width / 2, params.lineHeight * offset, "font", "Advanced mode (no dice)", params.fontSize)
+            .setOrigin(0.5, 0.5);
+        const protectionOn = new BitmapButton(this, params.width / 2, params.lineHeight * (offset + 1), "font", 'ON', params.fontSize)
+            .setOrigin(0.5, 0.5);
+        this.add.existing(protectionOn);
+        protectionOn.on('pointerup', () => this.colorProtection = true);
+        const protectionOff = new BitmapButton(this, params.width / 2, params.lineHeight * (offset + 2), "font", 'OFF', params.fontSize)
+            .setOrigin(0.5, 0.5);
+        this.add.existing(protectionOff);
+        protectionOff.on('pointerup', () => this.colorProtection = false);
+    }
+
+    createPlayingModeSection(offset) {
+        this.add.bitmapText(params.width / 2, params.lineHeight * offset, "font", "Select playing mode", params.fontSize)
+            .setOrigin(0.5, 0.5);
+        const localButton = new BitmapButton(this, params.width / 2, params.lineHeight * (offset + 1), "font", 'Local', params.fontSize)
             .setOrigin(0.5, 0.5);
         this.add.existing(localButton);
         localButton.on('pointerup', this.local, this);
-        const remoteButton = new BitmapButton(this, params.width / 2, params.lineHeight * 5, "font", 'Remote', params.fontSize)
+        const remoteButton = new BitmapButton(this, params.width / 2,params.lineHeight * (offset + 2), "font", 'Remote', params.fontSize)
             .setOrigin(0.5, 0.5);
         this.add.existing(remoteButton);
         remoteButton.on('pointerup', this.remote, this);
