@@ -33,8 +33,7 @@ window.onload = function() {
 class CommunicationScene extends Phaser.Scene {
     constructor() {
         super("CommunicationScene");
-        this.colorProtection = false;
-        this.withDice = true;
+        this.loadParametersFromStorage();
     }
 
     preload() {
@@ -115,11 +114,24 @@ class CommunicationScene extends Phaser.Scene {
         remoteButton.on('pointerup', this.remote, this);
     }
 
+    loadParametersFromStorage() {
+        this.colorProtection = localStorage.getItem('colorProtection') || false;
+        this.withDice = localStorage.getItem('withDice') || true;
+    }
+
+    saveParametersInStorage() {
+        localStorage.setItem('colorProtection',this.colorProtection);
+        localStorage.setItem('withDice', this.withDice);
+    }
+
     local() {
+        this.saveParametersInStorage();
         location.href = 'local';
     }
 
     remote() {
+        this.saveParametersInStorage();
+
         const roomName = this.generateRoomName(4);
         // TODO: test if the room already exists.
         const shareUrl = location.href + roomName + "/black";
