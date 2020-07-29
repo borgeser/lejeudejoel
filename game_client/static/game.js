@@ -168,16 +168,14 @@ class RemoteMode {
     }
 
     _sendBoard() {
-        const cells = engine.exportCells();
-        const pawns = engine.exportPawns();
-        const storage = engine.exportStorage();
         this._send(JSON.stringify({
             player: this.getPlayer(),
             action: 'board',
             details: {
-                cells: cells,
-                pawns: pawns,
-                storage: storage,
+                cells: engine.exportCells(),
+                pawns: engine.exportPawns(),
+                storage: engine.exportStorage(),
+                rules: engine.exportRules(),
                 dice: engine.getDiceValue(),
                 playing_team: engine.playingTeam
             }
@@ -303,7 +301,9 @@ class MainScene extends Phaser.Scene {
     }
 
     _createBoard() {
+        const rules = this._getRulesFromStorage();
         this.engine.generateBoard();
+        this.engine.loadRules(rules.colorProtection, rules.withDice);
         this._drawField();
         this.canPlay = true;
         mode.onBoardCreated();
@@ -311,6 +311,13 @@ class MainScene extends Phaser.Scene {
 
     _askForBoard() {
         mode.onBoardAsked();
+    }
+
+    _getRulesFromStorage() {
+        return {
+            colorProtection: JSON.parse(localStorage.getItem('colorProtection')) || false,
+            withDice: JSON.parse(localStorage.getItem('withDice')) || false
+        }
     }
 
     _drawField() {
@@ -700,6 +707,7 @@ class MainScene extends Phaser.Scene {
 
     boardReceived(info) {
         this.engine.loadBoard(info.cells, info.pawns, info.storage);
+        this.engine.loadRules(info.rules.colorProtection, info.rules.withDice);
         this._drawField();
         this.engine.playingTeam = info.playing_team;
         this._refreshPlayersTexts();

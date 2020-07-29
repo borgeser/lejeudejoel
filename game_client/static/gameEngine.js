@@ -34,6 +34,12 @@ export class GameEngine {
         this.pawnsStorage = storage;
     }
 
+    loadRules(colorProtection, withDice) {
+        this.colorProtection = colorProtection;
+        this.withDice = true;
+        // TODO: withDice
+    }
+
     exportCells() {
         return this.gameArray;
     }
@@ -44,6 +50,13 @@ export class GameEngine {
 
     exportStorage() {
         return this.pawnsStorage;
+    }
+
+    exportRules() {
+        return {
+            colorProtection: this.colorProtection,
+            withDice: this.withDice
+        }
     }
 
     _generateGameArray() {
@@ -154,6 +167,9 @@ export class GameEngine {
         const currentColor = this.getDiceValue();
         if (currentColor === -1) {
             return true
+        }
+        if (this.colorProtection && endPawn?.color === this.getCellAt(endRow, endCol)) {
+            return false;
         }
         return this.getCellAt(startRow, startCol) === currentColor
             || startPawn.color === currentColor;
