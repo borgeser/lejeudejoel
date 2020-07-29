@@ -115,8 +115,8 @@ class CommunicationScene extends Phaser.Scene {
     }
 
     loadParametersFromStorage() {
-        this.colorProtection = localStorage.getItem('colorProtection') || false;
-        this.withDice = localStorage.getItem('withDice') || true;
+        this.colorProtection = JSON.parse(localStorage.getItem('colorProtection')) || false;
+        this.withDice = JSON.parse(localStorage.getItem('withDice')) || false;
     }
 
     saveParametersInStorage() {

@@ -315,8 +315,8 @@ class MainScene extends Phaser.Scene {
 
     _getRulesFromStorage() {
         return {
-            colorProtection: localStorage.getItem('colorProtection') || false,
-            withDice: localStorage.getItem('withDice') || true
+            colorProtection: JSON.parse(localStorage.getItem('colorProtection')) || false,
+            withDice: JSON.parse(localStorage.getItem('withDice')) || false
         }
     }
 
