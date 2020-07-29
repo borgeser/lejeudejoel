@@ -46,8 +46,8 @@ class CommunicationScene extends Phaser.Scene {
         this.createPlayingModeSection(12);
     }
 
-    createColorProtectionSection(offset) {
-        this.add.bitmapText(params.width / 2, params.lineHeight * offset, "font", "Color protection", params.fontSize)
+    createDifficultySection(offset) {
+        this.add.bitmapText(params.width / 2, params.lineHeight * offset, "font", "Advanced mode (no dice)", params.fontSize)
             .setOrigin(0.5, 0.5);
         this.avancedOn = new BitmapButton(this, params.width / 2, params.lineHeight * (offset + 1), "font", 'ON', params.fontSize)
             .setOrigin(0.5, 0.5);
@@ -74,8 +74,8 @@ class CommunicationScene extends Phaser.Scene {
         this.avancedOff.setSelected(!advanced);
     }
 
-    createDifficultySection(offset) {
-        this.add.bitmapText(params.width / 2, params.lineHeight * offset, "font", "Advanced mode (no dice)", params.fontSize)
+    createColorProtectionSection(offset) {
+        this.add.bitmapText(params.width / 2, params.lineHeight * offset, "font", "Color protection", params.fontSize)
             .setOrigin(0.5, 0.5);
         this.protectionOn = new BitmapButton(this, params.width / 2, params.lineHeight * (offset + 1), "font", 'ON', params.fontSize)
             .setOrigin(0.5, 0.5);
