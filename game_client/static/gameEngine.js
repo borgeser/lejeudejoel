@@ -164,12 +164,12 @@ export class GameEngine {
         if (!startPawn.canBeat(endPawn)) {
             return false;
         }
+        if (this.colorProtection && endPawn?.color === this.getCellAt(endRow, endCol)) {
+            return false;
+        }
         const currentColor = this.getDiceValue();
         if (currentColor === -1) {
             return true
-        }
-        if (this.colorProtection && endPawn?.color === this.getCellAt(endRow, endCol)) {
-            return false;
         }
         return this.getCellAt(startRow, startCol) === currentColor
             || startPawn.color === currentColor;
