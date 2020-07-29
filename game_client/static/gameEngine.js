@@ -168,6 +168,9 @@ export class GameEngine {
         if (currentColor === -1) {
             return true
         }
+        if (this.colorProtection && endPawn?.color === this.getCellAt(endRow, endCol)) {
+            return false;
+        }
         return this.getCellAt(startRow, startCol) === currentColor
             || startPawn.color === currentColor;
     }
@@ -223,9 +226,6 @@ export class GameEngine {
     }
 
     getDiceValue() {
-        if (this.colorProtection) {
-            return this._dice.value == null ? null : -1; // TODO: real color protection
-        }
         return this._dice.value;
     }
 
