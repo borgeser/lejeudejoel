@@ -42,7 +42,7 @@ class CommunicationScene extends Phaser.Scene {
 
     create() {
         this.createColorProtectionSection(2);
-        this.createDifficultySection(6);
+        //this.createDifficultySection(6);
         this.createPlayingModeSection(12);
     }
 
