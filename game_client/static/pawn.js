@@ -7,13 +7,6 @@ export class Pawn {
         this.team = params.team;
     }
 
-    get tint() {
-        if (this.team === "purple") {
-            return 0x800080;
-        }
-        return 0xff7f00;
-    }
-
     canBeat(other) {
         if (other == null) {
             return true;
