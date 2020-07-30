@@ -465,7 +465,7 @@ class MainScene extends Phaser.Scene {
                         angle: 180,
                         _ease: 'Sine.easeInOut',
                         ease: 'Power2',
-                        duration: 2000
+                        duration: 5000
                     });
                 }
             }
@@ -481,7 +481,7 @@ class MainScene extends Phaser.Scene {
                             angle: 180,
                             _ease: 'Sine.easeInOut',
                             ease: 'Power2',
-                            duration: 2000
+                            duration: 5000
                         });
                     }
                 }
