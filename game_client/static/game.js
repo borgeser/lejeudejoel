@@ -556,7 +556,7 @@ class MainScene extends Phaser.Scene {
         } else {
             animalSprite = this.animalSprites[this.engine.selectedPawn.row][this.engine.selectedPawn.col];
         }
-        animalSprite.setTint(0xaaaaaa);
+        animalSprite.setTint(0x582900);
     }
 
     _removeSelectedPawnTint() {
