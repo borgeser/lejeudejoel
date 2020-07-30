@@ -1,4 +1,5 @@
 import {Dice} from "./dice.js";
+import {FakeDice} from "./fakeDice.js";
 import {Pawn} from "./pawn.js";
 
 export class GameEngine {
@@ -18,6 +19,7 @@ export class GameEngine {
 
         this.selectedPawn = null;
         this.playingTeam = null;
+        this.lastMove = null;
     }
 
     // generates the game board
@@ -36,8 +38,8 @@ export class GameEngine {
 
     loadRules(colorProtection, withDice) {
         this.colorProtection = colorProtection;
-        this.withDice = true;
-        // TODO: withDice
+        this.withDice = withDice;
+        this._dice = withDice ? new Dice() : new FakeDice();
     }
 
     exportCells() {
@@ -209,11 +211,13 @@ export class GameEngine {
     move(startRow, startCol, endRow, endCol) {
         this.gamePawns[endRow][endCol] = this.getPawnAt(startRow, startCol);
         this.gamePawns[startRow][startCol] = null;
+        this.lastMove = {row: endRow, col: endCol};
     }
 
     storageMove(animalIndex, team, endRow, endCol) {
         this.gamePawns[endRow][endCol] = this.getStorageAt(animalIndex, team);
         this.pawnsStorage[team][animalIndex] = null;
+        this.lastMove = {row: endRow, col: endCol};
     }
 
     isAdjacent(startRow, startCol, endRow, endCol) {
@@ -295,5 +299,10 @@ export class GameEngine {
         this.playingTeam = this.teams[nextIndex];
         this._dice.value = null;
         this.selectedPawn = null;
+        if (this.withDice) {
+            this._dice.value = null;
+        } else {
+            this._dice.value = this.getCellAt(this.lastMove.row, this.lastMove.col);
+        }
     }
 }
