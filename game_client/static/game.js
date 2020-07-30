@@ -321,9 +321,28 @@ class MainScene extends Phaser.Scene {
     }
 
     _drawField() {
+        this._cleanDrawings();
         this._drawCells();
         this._drawPawns();
         this._drawStorage();
+    }
+
+    _cleanDrawings() {
+        for (let cellSpritesRow of this.cellSprites) {
+            for (let cellSprite of cellSpritesRow) {
+                cellSprite?.destroy();
+            }
+        }
+        for (let animalSpritesRow of this.animalSprites) {
+            for (let animalSprite of animalSpritesRow) {
+                animalSprite?.destroy();
+            }
+        }
+        for (let team in this.storageSprites) {
+            for (let storageSprite of this.storageSprites[team]) {
+                storageSprite?.destroy();
+            }
+        }
     }
 
     _drawCells() {
