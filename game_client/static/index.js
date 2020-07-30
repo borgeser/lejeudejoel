@@ -5,11 +5,12 @@ const STATIC_ROOT = "/static/";
 let game;
 
 const params = {
-    fontSize: 64,
+    fontSize: 72,
     smallFontSize: 48,
     width: 1920,
     height: 2304,
-    lineHeight: 128,
+    lineHeight: 192,
+    textColor: 0x00ffff
 };
 
 window.onload = function() {
@@ -41,18 +42,20 @@ class CommunicationScene extends Phaser.Scene {
     }
 
     create() {
-        this.createColorProtectionSection(2);
-        //this.createDifficultySection(6);
-        this.createPlayingModeSection(12);
+        this.createColorProtectionSection(1);
+        this.createDifficultySection(4);
+        this.createPlayingModeSection(8);
     }
 
     createDifficultySection(offset) {
+        const widthQuarter = params.width / 4;
         this.add.bitmapText(params.width / 2, params.lineHeight * offset, "font", "Advanced mode (no dice)", params.fontSize)
+            .setTint(params.textColor)
             .setOrigin(0.5, 0.5);
-        this.avancedOn = new BitmapButton(this, params.width / 2, params.lineHeight * (offset + 1), "font", 'ON', params.fontSize)
+        this.avancedOn = new BitmapButton(this, widthQuarter, params.lineHeight * (offset + 1), "font", 'ON', params.fontSize)
             .setOrigin(0.5, 0.5);
         this.add.existing(this.avancedOn);
-        this.avancedOff = new BitmapButton(this, params.width / 2, params.lineHeight * (offset + 2), "font", 'OFF', params.fontSize)
+        this.avancedOff = new BitmapButton(this, widthQuarter * 3, params.lineHeight * (offset + 1), "font", 'OFF', params.fontSize)
             .setOrigin(0.5, 0.5);
         this.add.existing(this.avancedOff);
 
@@ -75,12 +78,14 @@ class CommunicationScene extends Phaser.Scene {
     }
 
     createColorProtectionSection(offset) {
+        const widthQuarter = params.width / 4;
         this.add.bitmapText(params.width / 2, params.lineHeight * offset, "font", "Color protection", params.fontSize)
+            .setTint(params.textColor)
             .setOrigin(0.5, 0.5);
-        this.protectionOn = new BitmapButton(this, params.width / 2, params.lineHeight * (offset + 1), "font", 'ON', params.fontSize)
+        this.protectionOn = new BitmapButton(this, widthQuarter, params.lineHeight * (offset + 1), "font", 'ON', params.fontSize)
             .setOrigin(0.5, 0.5);
         this.add.existing(this.protectionOn);
-        this.protectionOff = new BitmapButton(this, params.width / 2, params.lineHeight * (offset + 2), "font", 'OFF', params.fontSize)
+        this.protectionOff = new BitmapButton(this, widthQuarter * 3, params.lineHeight * (offset + 1), "font", 'OFF', params.fontSize)
             .setOrigin(0.5, 0.5);
         this.add.existing(this.protectionOff);
 
@@ -102,13 +107,15 @@ class CommunicationScene extends Phaser.Scene {
     }
 
     createPlayingModeSection(offset) {
+        const widthQuarter = params.width / 4;
         this.add.bitmapText(params.width / 2, params.lineHeight * offset, "font", "Select playing mode", params.fontSize)
+            .setTint(params.textColor)
             .setOrigin(0.5, 0.5);
-        const localButton = new BitmapButton(this, params.width / 2, params.lineHeight * (offset + 1), "font", 'Local', params.fontSize)
+        const localButton = new BitmapButton(this, widthQuarter, params.lineHeight * (offset + 1), "font", 'Local', params.fontSize)
             .setOrigin(0.5, 0.5);
         this.add.existing(localButton);
         localButton.on('pointerup', this.local, this);
-        const remoteButton = new BitmapButton(this, params.width / 2,params.lineHeight * (offset + 2), "font", 'Remote', params.fontSize)
+        const remoteButton = new BitmapButton(this, widthQuarter * 3,params.lineHeight * (offset + 1), "font", 'Remote', params.fontSize)
             .setOrigin(0.5, 0.5);
         this.add.existing(remoteButton);
         remoteButton.on('pointerup', this.remote, this);
@@ -170,11 +177,11 @@ class ShareUrlScene extends Phaser.Scene {
                 .setOrigin(0.5, 0,5)
                 .setMaxWidth(params.width, 47); // 47 is the '/' character in ASCII
 
-        const copyButton = new BitmapButton(this, params.width / 2, params.lineHeight * 5, "font", 'Copy URL', params.fontSize)
+        const copyButton = new BitmapButton(this, params.width / 2, params.lineHeight * 4, "font", 'Copy URL', params.fontSize)
             .setOrigin(0.5, 0.5);
         this.add.existing(copyButton);
         copyButton.on('pointerup', this.copyUrl, this);
-        const goButton = new BitmapButton(this, params.width / 2, params.lineHeight * 6, "font", 'Go!', params.fontSize)
+        const goButton = new BitmapButton(this, params.width / 2, params.lineHeight * 7, "font", 'Go!', params.fontSize)
             .setOrigin(0.5, 0.5);
         this.add.existing(goButton);
         goButton.on('pointerup', this.goToGame, this);

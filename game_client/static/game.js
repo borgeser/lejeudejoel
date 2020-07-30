@@ -321,9 +321,28 @@ class MainScene extends Phaser.Scene {
     }
 
     _drawField() {
+        this._cleanDrawings();
         this._drawCells();
         this._drawPawns();
         this._drawStorage();
+    }
+
+    _cleanDrawings() {
+        for (let cellSpritesRow of this.cellSprites) {
+            for (let cellSprite of cellSpritesRow) {
+                cellSprite?.destroy();
+            }
+        }
+        for (let animalSpritesRow of this.animalSprites) {
+            for (let animalSprite of animalSpritesRow) {
+                animalSprite?.destroy();
+            }
+        }
+        for (let team in this.storageSprites) {
+            for (let storageSprite of this.storageSprites[team]) {
+                storageSprite?.destroy();
+            }
+        }
     }
 
     _drawCells() {
@@ -361,17 +380,6 @@ class MainScene extends Phaser.Scene {
                     let animal =  this.add.sprite(gemX, gemY, pawn.team + "/" + pawn.animal);
                     animal.depth = 1; // TODO: better handling of depth (with groups)
                     this.animalSprites[i][j] = animal;
-                    animal.scaleX = 0;
-                    animal.scaleY = 0;
-                    this.tweens.add({
-                        targets: animal,
-                        scaleX: 1,
-                        scaleY: 1,
-                        _ease: 'Sine.easeInOut',
-                        ease: 'Power2',
-                        duration: 1000,
-                        delay: i * 200,
-                    });
                 }
             }
         }
@@ -389,17 +397,6 @@ class MainScene extends Phaser.Scene {
                     let animal =  this.add.sprite(gemX, gemY, pawn.team + "/" + pawn.animal);
                     animal.depth = 1; // TODO: better handling of depth (with groups)
                     this.storageSprites[team][j] = animal;
-                    animal.scaleX = 0;
-                    animal.scaleY = 0;
-                    this.tweens.add({
-                        targets: animal,
-                        scaleX: 1,
-                        scaleY: 1,
-                        _ease: 'Sine.easeInOut',
-                        ease: 'Power2',
-                        duration: 1000,
-                        delay: t * 200,
-                    });
                 }
             }
         }
@@ -468,7 +465,7 @@ class MainScene extends Phaser.Scene {
                         angle: 180,
                         _ease: 'Sine.easeInOut',
                         ease: 'Power2',
-                        duration: 2000
+                        duration: 5000
                     });
                 }
             }
@@ -484,7 +481,7 @@ class MainScene extends Phaser.Scene {
                             angle: 180,
                             _ease: 'Sine.easeInOut',
                             ease: 'Power2',
-                            duration: 2000
+                            duration: 5000
                         });
                     }
                 }
@@ -559,7 +556,7 @@ class MainScene extends Phaser.Scene {
         } else {
             animalSprite = this.animalSprites[this.engine.selectedPawn.row][this.engine.selectedPawn.col];
         }
-        animalSprite.setTint(0xaaaaaa);
+        animalSprite.setTint(0x582900);
     }
 
     _removeSelectedPawnTint() {

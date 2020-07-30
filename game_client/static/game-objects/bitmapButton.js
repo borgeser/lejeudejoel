@@ -8,14 +8,14 @@ export class BitmapButton extends Phaser.GameObjects.BitmapText {
     }
 
     _enterButtonHoverState() {
-        this.setTint(0x00ffff);
+        this.setTint(0xffffff);
     }
 
     _enterButtonRestState() {
         if (this.selected) {
             this.setTint(0xffff00);
         } else {
-            this.setTint(0xffffff);
+            this.setTint(0xaaaaaa);
         }
     }
 
