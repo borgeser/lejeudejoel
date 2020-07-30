@@ -380,17 +380,6 @@ class MainScene extends Phaser.Scene {
                     let animal =  this.add.sprite(gemX, gemY, pawn.team + "/" + pawn.animal);
                     animal.depth = 1; // TODO: better handling of depth (with groups)
                     this.animalSprites[i][j] = animal;
-                    animal.scaleX = 0;
-                    animal.scaleY = 0;
-                    this.tweens.add({
-                        targets: animal,
-                        scaleX: 1,
-                        scaleY: 1,
-                        _ease: 'Sine.easeInOut',
-                        ease: 'Power2',
-                        duration: 1000,
-                        delay: i * 200,
-                    });
                 }
             }
         }
@@ -408,17 +397,6 @@ class MainScene extends Phaser.Scene {
                     let animal =  this.add.sprite(gemX, gemY, pawn.team + "/" + pawn.animal);
                     animal.depth = 1; // TODO: better handling of depth (with groups)
                     this.storageSprites[team][j] = animal;
-                    animal.scaleX = 0;
-                    animal.scaleY = 0;
-                    this.tweens.add({
-                        targets: animal,
-                        scaleX: 1,
-                        scaleY: 1,
-                        _ease: 'Sine.easeInOut',
-                        ease: 'Power2',
-                        duration: 1000,
-                        delay: t * 200,
-                    });
                 }
             }
         }
