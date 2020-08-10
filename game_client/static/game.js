@@ -264,6 +264,7 @@ class MainScene extends Phaser.Scene {
                 this.load.image(team + "/" + animal, STATIC_ROOT + 'assets/sprites/' + team + "/" + animal + '.png');
             }
         }
+        this.load.image("death", STATIC_ROOT + 'assets/sprites/death.png');
         this.load.bitmapFont("font", STATIC_ROOT + "assets/fonts/font.png", STATIC_ROOT + "assets/fonts/font.fnt");
     }
 
@@ -434,6 +435,11 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    _drawDeathSymbol(x, y) {
+        const death = this.add.sprite(x, y, "death");
+        death.depth = 2;
+    }
+
     _getDiceTileIndex(diceValue) {
         if (diceValue === -1) {
             return 5;
@@ -557,12 +563,15 @@ class MainScene extends Phaser.Scene {
         this.canPlay = false;
         let sprite = this.animalSprites[row][col];
         const teamIndex = this.engine.teams.indexOf(pawn.team);
+        const x = this._cemeteryToPixelX(pawn.index);
+        const y = this._cemeteryToPixelY(teamIndex);
         this.tweens.add({
             targets: sprite,
-            x: this._cemeteryToPixelX(pawn.index),
-            y: this._cemeteryToPixelY(teamIndex),
+            x: x,
+            y: y,
             duration: 500,
             onComplete: () => {
+                this._drawDeathSymbol(x, y);
                 this.animalSprites[row][col] = null;
                 this.canPlay = true;
             }
