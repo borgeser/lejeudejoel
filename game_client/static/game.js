@@ -586,16 +586,16 @@ class MainScene extends Phaser.Scene {
         return this._boardTotalOffset().y + gameOptions.cellSize * row + gameOptions.cellSize / 2;
     }
 
-    _storageToPixelY(team_idx) {
-        if (team_idx === 0) {
+    _storageToPixelY(teamIndex) {
+        if (teamIndex === 0) {
             return gameOptions.cellSize + gameOptions.cellSize / 2;
         } else {
             return this._boardTotalOffset().y + gameOptions.cellSize * engineConfig.rows + gameOptions.cellSize / 2;
         }
     }
 
-    _storageToPixelX(animal_idx) {
-        return this._boardTotalOffset().x + gameOptions.cellSize * animal_idx + gameOptions.cellSize / 2;
+    _storageToPixelX(animalIndex) {
+        return this._boardTotalOffset().x + gameOptions.cellSize * animalIndex + gameOptions.cellSize / 2;
     }
 
     _isStorage(row, col) {
