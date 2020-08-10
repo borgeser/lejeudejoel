@@ -145,6 +145,10 @@ export class GameEngine {
         return this.pawnsStorage[team][index];
     }
 
+    getCemeteryAt(index, team) {
+        return this.cemetery[team][index];
+    }
+
     getNumberOfPawns(team) {
         return this.gamePawns.reduce((acc, row) => acc + row.reduce((acc2, pawn) => acc2 + (pawn?.team === team ? 1 : 0), 0), 0);
     }

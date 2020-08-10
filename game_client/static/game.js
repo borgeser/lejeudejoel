@@ -327,6 +327,7 @@ class MainScene extends Phaser.Scene {
         this._drawCells();
         this._drawPawns();
         this._drawStorage();
+        this._drawCemetery();
     }
 
     _cleanDrawings() {
@@ -399,6 +400,22 @@ class MainScene extends Phaser.Scene {
                     let animal =  this.add.sprite(gemX, gemY, pawn.team + "/" + pawn.animal);
                     animal.depth = 1; // TODO: better handling of depth (with groups)
                     this.storageSprites[team][j] = animal;
+                }
+            }
+        }
+    }
+
+    _drawCemetery() {
+        for (let t = 0; t < this.engine.teams.length; t++) {
+            const team = this.engine.teams[t];
+            for (let j = 0; j < this.engine.getColumns(); j++) {
+                let x = this._cemeteryToPixelX(j);
+                let y = this._cemeteryToPixelY(t);
+                let pawn = this.engine.getCemeteryAt(j, team);
+                if (pawn != null) {
+                    let animal =  this.add.sprite(x, y, pawn.team + "/" + pawn.animal);
+                    animal.depth = 1; // TODO: better handling of depth (with groups)
+                    this._drawDeathSymbol(x, y);
                 }
             }
         }
