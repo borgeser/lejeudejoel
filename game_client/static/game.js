@@ -175,6 +175,7 @@ class RemoteMode {
                 cells: engine.exportCells(),
                 pawns: engine.exportPawns(),
                 storage: engine.exportStorage(),
+                cemetery: engine.exportCemetery(),
                 rules: engine.exportRules(),
                 dice: engine.getDiceValue(),
                 playing_team: engine.playingTeam
@@ -524,7 +525,6 @@ class MainScene extends Phaser.Scene {
             duration: 500,
             onComplete: () => {
                 this.animalSprites[startRow][startCol] = null;
-                this.animalSprites[endRow][endCol]?.destroy();
                 this.animalSprites[endRow][endCol] = startSprite;
                 this.canPlay = true;
             }
@@ -544,6 +544,26 @@ class MainScene extends Phaser.Scene {
                 this.storageSprites[team][animalIndex] = null;
                 this.animalSprites[endRow][endCol]?.destroy();
                 this.animalSprites[endRow][endCol] = startSprite;
+                this.canPlay = true;
+            }
+        });
+    }
+
+    _sendToCemetery(row, col) {
+        const pawn = this.engine.getPawnAt(row, col);
+        if (pawn == null) {
+            return;
+        }
+        this.canPlay = false;
+        let sprite = this.animalSprites[row][col];
+        const teamIndex = this.engine.teams.indexOf(pawn.team);
+        this.tweens.add({
+            targets: sprite,
+            x: this._cemeteryToPixelX(pawn.index),
+            y: this._cemeteryToPixelY(teamIndex),
+            duration: 500,
+            onComplete: () => {
+                this.animalSprites[row][col] = null;
                 this.canPlay = true;
             }
         });
@@ -611,6 +631,14 @@ class MainScene extends Phaser.Scene {
         return {"animal_index": animalIndex, "team_index": teamIndex};
     }
 
+    _cemeteryToPixelY(teamIndex) {
+        return this._storageToPixelY(teamIndex);
+    }
+
+    _cemeteryToPixelX(animalIndex) {
+        return this._storageToPixelX(animalIndex);
+    }
+
     _tileSelection(row, col) {
         if (!this.engine.canSelect(row, col)) {
             return;
@@ -636,6 +664,8 @@ class MainScene extends Phaser.Scene {
         if (!this.engine.canMove(startRow, startCol, row, col)) {
             return;
         }
+        this._sendToCemetery(row, col);
+        this.engine.sendToCemetery(row, col);
         this._move(startRow, startCol, row, col);
         this.engine.move(startRow, startCol, row, col);
         this.engine.endTurn();
@@ -703,7 +733,7 @@ class MainScene extends Phaser.Scene {
     // Socket Event
 
     boardReceived(info) {
-        this.engine.loadBoard(info.cells, info.pawns, info.storage);
+        this.engine.loadBoard(info.cells, info.pawns, info.storage, info.cemetery);
         this.engine.loadRules(info.rules.colorProtection, info.rules.withDice);
         this._drawField();
         this.engine.playingTeam = info.playing_team;

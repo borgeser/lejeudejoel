@@ -16,6 +16,7 @@ export class GameEngine {
         this.gameArray = [];
         this.gamePawns = [];
         this.pawnsStorage = {};
+        this.cemetery = {};
 
         this.selectedPawn = null;
         this.playingTeam = null;
@@ -27,13 +28,15 @@ export class GameEngine {
         this._generateGameArray();
         this._generateGamePawns();
         this._generatePawnsStorage();
+        this._generateCemetery();
         this.playingTeam = this.teams[0];
     }
 
-    loadBoard(cells, pawns, storage) {
+    loadBoard(cells, pawns, storage, cemetery) {
         this.gameArray = cells;
         this.gamePawns = pawns.map(row => row.map(pawn => pawn != null ? new Pawn(pawn) : null));
         this.pawnsStorage = storage;
+        this.cemetery = cemetery;
     }
 
     loadRules(colorProtection, withDice) {
@@ -52,6 +55,10 @@ export class GameEngine {
 
     exportStorage() {
         return this.pawnsStorage;
+    }
+
+    exportCemetery() {
+        return this.cemetery;
     }
 
     exportRules() {
@@ -84,6 +91,12 @@ export class GameEngine {
                     team: team
                 });
             }
+        }
+    }
+
+    _generateCemetery() {
+        for (let team of this.teams) {
+            this.cemetery[team] = [];
         }
     }
 
@@ -218,6 +231,16 @@ export class GameEngine {
         this.gamePawns[endRow][endCol] = this.getStorageAt(animalIndex, team);
         this.pawnsStorage[team][animalIndex] = null;
         this.lastMove = {row: endRow, col: endCol};
+    }
+
+    sendToCemetery(row, col) {
+        const pawn = this.gamePawns[row][col];
+        if (pawn == null) {
+            return null;
+        }
+        this.gamePawns[row][col] = null;
+        this.cemetery[pawn.team][pawn.index] = pawn;
+        return pawn;
     }
 
     isAdjacent(startRow, startCol, endRow, endCol) {
