@@ -265,6 +265,7 @@ class MainScene extends Phaser.Scene {
             }
         }
         this.load.image("death", STATIC_ROOT + 'assets/sprites/death.png');
+        this.load.image("darwin", STATIC_ROOT + 'assets/sprites/darwin.png');
         this.load.bitmapFont("font", STATIC_ROOT + "assets/fonts/font.png", STATIC_ROOT + "assets/fonts/font.fnt");
     }
 
@@ -282,6 +283,7 @@ class MainScene extends Phaser.Scene {
         } else {
             this._askForBoard();
         }
+        this._drawDarwin();
         this._drawDice();
         this._drawSkipTurn();
         this.currentPlayerText = this.add.bitmapText(
@@ -455,6 +457,14 @@ class MainScene extends Phaser.Scene {
             this.add.existing(this.skipButton);
             this.skipButton.on('pointerdown', this._skipClicked, this);
         }
+    }
+
+    _drawDarwin() {
+        const xOffset = this._boardTotalOffset().x + this._boardWidth();
+        const remainingSpace = gameOptions.width - xOffset;
+        const x = remainingSpace / 2 +  xOffset;
+        const y = this._boardTotalOffset().y + gameOptions.cellSize / 2;
+        this.add.sprite(x, y, "darwin").setScale(0.6, 0.6);
     }
 
     _drawDeathSymbol(x, y) {
