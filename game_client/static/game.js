@@ -266,6 +266,7 @@ class MainScene extends Phaser.Scene {
         }
         this.load.image("death", STATIC_ROOT + 'assets/sprites/death.png');
         this.load.image("darwin", STATIC_ROOT + 'assets/sprites/darwin.png');
+        this.load.image("arrow", STATIC_ROOT + 'assets/sprites/arrow.png');
         this.load.bitmapFont("font", STATIC_ROOT + "assets/fonts/font.png", STATIC_ROOT + "assets/fonts/font.fnt");
     }
 
@@ -277,6 +278,7 @@ class MainScene extends Phaser.Scene {
         this.cemeteryUnorderedSprites = [];
         this.diceSprite = null;
         this.skipButton = null;
+        this.currentPlayerArrow = null;
         this.canPlay = false;
         if (mode.isHost()) {
             this._createBoard();
@@ -285,6 +287,7 @@ class MainScene extends Phaser.Scene {
         }
         this._drawDarwin();
         this._drawDice();
+        this._drawCurrentPlayerArrow();
         this._drawSkipTurn();
         this.currentPlayerText = this.add.bitmapText(
             this._boardTotalOffset().x,
@@ -459,6 +462,14 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    _drawCurrentPlayerArrow() {
+        this.currentPlayerArrow?.destroy();
+        const x = gameOptions.padding.x;
+        const teamIndex = this.engine.teams.indexOf(this.engine.playingTeam);
+        const y = this._storageToPixelY(teamIndex);
+        this.currentPlayerArrow = this.add.sprite(x, y, "arrow");
+    }
+
     _drawDarwin() {
         const xOffset = this._boardTotalOffset().x + this._boardWidth();
         const remainingSpace = gameOptions.width - xOffset;
@@ -489,6 +500,7 @@ class MainScene extends Phaser.Scene {
         }
         this._drawDice();
         this._drawSkipTurn();
+        this._drawCurrentPlayerArrow();
         this._refreshPlayersTexts();
     }
 
@@ -547,7 +559,7 @@ class MainScene extends Phaser.Scene {
     _refreshPlayersTexts() {
         this.myPlayerText.text = "My color is " + mode.getPlayer();
         if (this.engine.playingTeam != null) {
-            this.currentPlayerText.text = "Player " + this.engine.playingTeam + ", your turn";
+            this.currentPlayerText.text = "";
         } else {
             this.currentPlayerText.text = "Waiting for other player...";
         }
@@ -784,6 +796,7 @@ class MainScene extends Phaser.Scene {
         this.engine.setDiceValue(info.dice);
         this._drawDice();
         this._drawSkipTurn();
+        this._drawCurrentPlayerArrow();
         this.canPlay = true;
     }
 
