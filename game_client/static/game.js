@@ -273,6 +273,7 @@ class MainScene extends Phaser.Scene {
         this.cellSprites = [];
         this.animalSprites = [];
         this.storageSprites = {};
+        this.cemeteryUnorderedSprites = [];
         this.diceSprite = null;
         this.skipButton = null;
         this.canPlay = false;
@@ -346,6 +347,9 @@ class MainScene extends Phaser.Scene {
                 storageSprite?.destroy();
             }
         }
+        for (let sprite of this.cemeteryUnorderedSprites) {
+            sprite?.destroy();
+        }
     }
 
     _drawCells() {
@@ -415,6 +419,7 @@ class MainScene extends Phaser.Scene {
                 if (pawn != null) {
                     let animal =  this.add.sprite(x, y, pawn.team + "/" + pawn.animal);
                     animal.depth = 1; // TODO: better handling of depth (with groups)
+                    this.cemeteryUnorderedSprites.push(animal);
                     this._drawDeathSymbol(x, y);
                 }
             }
@@ -455,6 +460,7 @@ class MainScene extends Phaser.Scene {
     _drawDeathSymbol(x, y) {
         const death = this.add.sprite(x, y, "death");
         death.depth = 2;
+        this.cemeteryUnorderedSprites.push(death);
     }
 
     _getDiceTileIndex(diceValue) {
@@ -588,6 +594,7 @@ class MainScene extends Phaser.Scene {
             y: y,
             duration: 500,
             onComplete: () => {
+                this.cemeteryUnorderedSprites.push(sprite);
                 this._drawDeathSymbol(x, y);
                 this.animalSprites[row][col] = null;
                 this.canPlay = true;
