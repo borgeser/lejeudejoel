@@ -75,6 +75,10 @@ class LocalMode {
         return true;
     }
 
+    isMultiScreen() {
+        return false;
+    }
+
     // UI Events
 
     onMove(startX, startY, endX, endY) {}
@@ -102,6 +106,10 @@ class RemoteMode {
 
     isHost() {
         return this.getPlayer() === engineConfig.teams[0];
+    }
+
+    isMultiScreen() {
+        return true;
     }
 
     startWebSocket() {
@@ -175,6 +183,7 @@ class RemoteMode {
                 cells: engine.exportCells(),
                 pawns: engine.exportPawns(),
                 storage: engine.exportStorage(),
+                cemetery: engine.exportCemetery(),
                 rules: engine.exportRules(),
                 dice: engine.getDiceValue(),
                 playing_team: engine.playingTeam
@@ -263,6 +272,9 @@ class MainScene extends Phaser.Scene {
                 this.load.image(team + "/" + animal, STATIC_ROOT + 'assets/sprites/' + team + "/" + animal + '.png');
             }
         }
+        this.load.image("death", STATIC_ROOT + 'assets/sprites/death.png');
+        this.load.image("darwin", STATIC_ROOT + 'assets/sprites/darwin.png');
+        this.load.image("arrow", STATIC_ROOT + 'assets/sprites/arrow.png');
         this.load.bitmapFont("font", STATIC_ROOT + "assets/fonts/font.png", STATIC_ROOT + "assets/fonts/font.fnt");
     }
 
@@ -271,31 +283,37 @@ class MainScene extends Phaser.Scene {
         this.cellSprites = [];
         this.animalSprites = [];
         this.storageSprites = {};
+        this.cemeteryUnorderedSprites = [];
         this.diceSprite = null;
         this.skipButton = null;
+        this.currentPlayerArrow = null;
         this.canPlay = false;
         if (mode.isHost()) {
             this._createBoard();
         } else {
             this._askForBoard();
         }
+        this._drawDarwin();
         this._drawDice();
+        this._drawCurrentPlayerArrow();
         this._drawSkipTurn();
-        this.currentPlayerText = this.add.bitmapText(
+        this.infoText = this.add.bitmapText(
             this._boardTotalOffset().x,
             gameOptions.padding.y,
             "font",
             "",
             gameOptions.fontSize
         );
-        this.myPlayerText = this.add.bitmapText(
-            this._boardTotalOffset().x,
-            gameOptions.height - gameOptions.padding.y - gameOptions.fontSize,
-            "font",
-            "",
-            gameOptions.fontSize
-        );
-        this._refreshPlayersTexts();
+        if (mode.isMultiScreen()) {
+            this.add.bitmapText(
+                this._boardTotalOffset().x,
+                gameOptions.height - gameOptions.padding.y - gameOptions.fontSize,
+                "font",
+                "My color is " + mode.getPlayer(),
+                gameOptions.fontSize
+            );
+        }
+        this._refreshInfoText();
         this.input.on("pointerdown", this._pixelClicked, this);
         scene = this;
     }
@@ -325,6 +343,7 @@ class MainScene extends Phaser.Scene {
         this._drawCells();
         this._drawPawns();
         this._drawStorage();
+        this._drawCemetery();
     }
 
     _cleanDrawings() {
@@ -342,6 +361,9 @@ class MainScene extends Phaser.Scene {
             for (let storageSprite of this.storageSprites[team]) {
                 storageSprite?.destroy();
             }
+        }
+        for (let sprite of this.cemeteryUnorderedSprites) {
+            sprite?.destroy();
         }
     }
 
@@ -402,6 +424,23 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    _drawCemetery() {
+        for (let t = 0; t < this.engine.teams.length; t++) {
+            const team = this.engine.teams[t];
+            for (let j = 0; j < this.engine.getColumns(); j++) {
+                let x = this._cemeteryToPixelX(j);
+                let y = this._cemeteryToPixelY(t);
+                let pawn = this.engine.getCemeteryAt(j, team);
+                if (pawn != null) {
+                    let animal =  this.add.sprite(x, y, pawn.team + "/" + pawn.animal);
+                    animal.depth = 1; // TODO: better handling of depth (with groups)
+                    this.cemeteryUnorderedSprites.push(animal);
+                    this._drawDeathSymbol(x, y);
+                }
+            }
+        }
+    }
+
     _drawDice() {
         this.diceSprite?.destroy();
         const xOffset = this._boardTotalOffset().x + this._boardWidth();
@@ -433,6 +472,28 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    _drawCurrentPlayerArrow() {
+        this.currentPlayerArrow?.destroy();
+        const x = gameOptions.padding.x;
+        const teamIndex = this.engine.teams.indexOf(this.engine.playingTeam);
+        const y = this._storageToPixelY(teamIndex);
+        this.currentPlayerArrow = this.add.sprite(x, y, "arrow");
+    }
+
+    _drawDarwin() {
+        const xOffset = this._boardTotalOffset().x + this._boardWidth();
+        const remainingSpace = gameOptions.width - xOffset;
+        const x = remainingSpace / 2 +  xOffset;
+        const y = this._boardTotalOffset().y + gameOptions.cellSize / 2;
+        this.add.sprite(x, y, "darwin").setScale(0.6, 0.6);
+    }
+
+    _drawDeathSymbol(x, y) {
+        const death = this.add.sprite(x, y, "death");
+        death.depth = 2;
+        this.cemeteryUnorderedSprites.push(death);
+    }
+
     _getDiceTileIndex(diceValue) {
         if (diceValue === -1) {
             return 5;
@@ -443,13 +504,14 @@ class MainScene extends Phaser.Scene {
     _endTurn() {
         if (this.engine.isGameFinished()) {
             const winner = this.engine.getWinningTeam();
-            this.currentPlayerText.text = "Player " + winner + ", you win!";
+            this.infoText.text = "Player " + winner + ", you win!";
             this._startVictoryAnimation(winner);
             return;
         }
         this._drawDice();
         this._drawSkipTurn();
-        this._refreshPlayersTexts();
+        this._drawCurrentPlayerArrow();
+        this._refreshInfoText();
     }
 
     _startVictoryAnimation(winner) {
@@ -504,12 +566,11 @@ class MainScene extends Phaser.Scene {
         return gameOptions.cellSize * this.engine.getColumns();
     }
 
-    _refreshPlayersTexts() {
-        this.myPlayerText.text = "My color is " + mode.getPlayer();
+    _refreshInfoText() {
         if (this.engine.playingTeam != null) {
-            this.currentPlayerText.text = "Player " + this.engine.playingTeam + ", your turn";
+            this.infoText.text = "";
         } else {
-            this.currentPlayerText.text = "Waiting for other player...";
+            this.infoText.text = "Waiting for other player...";
         }
     }
 
@@ -524,7 +585,6 @@ class MainScene extends Phaser.Scene {
             duration: 500,
             onComplete: () => {
                 this.animalSprites[startRow][startCol] = null;
-                this.animalSprites[endRow][endCol]?.destroy();
                 this.animalSprites[endRow][endCol] = startSprite;
                 this.canPlay = true;
             }
@@ -544,6 +604,30 @@ class MainScene extends Phaser.Scene {
                 this.storageSprites[team][animalIndex] = null;
                 this.animalSprites[endRow][endCol]?.destroy();
                 this.animalSprites[endRow][endCol] = startSprite;
+                this.canPlay = true;
+            }
+        });
+    }
+
+    _sendToCemetery(row, col) {
+        const pawn = this.engine.getPawnAt(row, col);
+        if (pawn == null) {
+            return;
+        }
+        this.canPlay = false;
+        let sprite = this.animalSprites[row][col];
+        const teamIndex = this.engine.teams.indexOf(pawn.team);
+        const x = this._cemeteryToPixelX(pawn.index);
+        const y = this._cemeteryToPixelY(teamIndex);
+        this.tweens.add({
+            targets: sprite,
+            x: x,
+            y: y,
+            duration: 500,
+            onComplete: () => {
+                this.cemeteryUnorderedSprites.push(sprite);
+                this._drawDeathSymbol(x, y);
+                this.animalSprites[row][col] = null;
                 this.canPlay = true;
             }
         });
@@ -586,16 +670,16 @@ class MainScene extends Phaser.Scene {
         return this._boardTotalOffset().y + gameOptions.cellSize * row + gameOptions.cellSize / 2;
     }
 
-    _storageToPixelY(team_idx) {
-        if (team_idx === 0) {
+    _storageToPixelY(teamIndex) {
+        if (teamIndex === 0) {
             return gameOptions.cellSize + gameOptions.cellSize / 2;
         } else {
             return this._boardTotalOffset().y + gameOptions.cellSize * engineConfig.rows + gameOptions.cellSize / 2;
         }
     }
 
-    _storageToPixelX(animal_idx) {
-        return this._boardTotalOffset().x + gameOptions.cellSize * animal_idx + gameOptions.cellSize / 2;
+    _storageToPixelX(animalIndex) {
+        return this._boardTotalOffset().x + gameOptions.cellSize * animalIndex + gameOptions.cellSize / 2;
     }
 
     _isStorage(row, col) {
@@ -609,6 +693,14 @@ class MainScene extends Phaser.Scene {
         const animalIndex = col;
         const teamIndex = row === -1 ? 0 : 1;
         return {"animal_index": animalIndex, "team_index": teamIndex};
+    }
+
+    _cemeteryToPixelY(teamIndex) {
+        return this._storageToPixelY(teamIndex);
+    }
+
+    _cemeteryToPixelX(animalIndex) {
+        return this._storageToPixelX(animalIndex);
     }
 
     _tileSelection(row, col) {
@@ -636,6 +728,8 @@ class MainScene extends Phaser.Scene {
         if (!this.engine.canMove(startRow, startCol, row, col)) {
             return;
         }
+        this._sendToCemetery(row, col);
+        this.engine.sendToCemetery(row, col);
         this._move(startRow, startCol, row, col);
         this.engine.move(startRow, startCol, row, col);
         this.engine.endTurn();
@@ -703,14 +797,15 @@ class MainScene extends Phaser.Scene {
     // Socket Event
 
     boardReceived(info) {
-        this.engine.loadBoard(info.cells, info.pawns, info.storage);
+        this.engine.loadBoard(info.cells, info.pawns, info.storage, info.cemetery);
         this.engine.loadRules(info.rules.colorProtection, info.rules.withDice);
         this._drawField();
         this.engine.playingTeam = info.playing_team;
-        this._refreshPlayersTexts();
+        this._refreshInfoText();
         this.engine.setDiceValue(info.dice);
         this._drawDice();
         this._drawSkipTurn();
+        this._drawCurrentPlayerArrow();
         this.canPlay = true;
     }
 
@@ -721,6 +816,8 @@ class MainScene extends Phaser.Scene {
     }
 
     moveFinished(startRow, startCol, endRow, endCol) {
+        this._sendToCemetery(endRow, endCol);
+        this.engine.sendToCemetery(endRow, endCol);
         this._move(startRow, startCol, endRow, endCol);
         this.engine.move(startRow, startCol, endRow, endCol);
         this.engine.endTurn();
