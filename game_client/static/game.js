@@ -75,6 +75,10 @@ class LocalMode {
         return true;
     }
 
+    isMultiScreen() {
+        return false;
+    }
+
     // UI Events
 
     onMove(startX, startY, endX, endY) {}
@@ -102,6 +106,10 @@ class RemoteMode {
 
     isHost() {
         return this.getPlayer() === engineConfig.teams[0];
+    }
+
+    isMultiScreen() {
+        return true;
     }
 
     startWebSocket() {
@@ -296,14 +304,16 @@ class MainScene extends Phaser.Scene {
             "",
             gameOptions.fontSize
         );
-        this.myPlayerText = this.add.bitmapText(
-            this._boardTotalOffset().x,
-            gameOptions.height - gameOptions.padding.y - gameOptions.fontSize,
-            "font",
-            "",
-            gameOptions.fontSize
-        );
-        this._refreshPlayersTexts();
+        if (mode.isMultiScreen()) {
+            this.add.bitmapText(
+                this._boardTotalOffset().x,
+                gameOptions.height - gameOptions.padding.y - gameOptions.fontSize,
+                "font",
+                "My color is " + mode.getPlayer(),
+                gameOptions.fontSize
+            );
+        }
+        this._refreshInfoText();
         this.input.on("pointerdown", this._pixelClicked, this);
         scene = this;
     }
@@ -501,7 +511,7 @@ class MainScene extends Phaser.Scene {
         this._drawDice();
         this._drawSkipTurn();
         this._drawCurrentPlayerArrow();
-        this._refreshPlayersTexts();
+        this._refreshInfoText();
     }
 
     _startVictoryAnimation(winner) {
@@ -556,8 +566,7 @@ class MainScene extends Phaser.Scene {
         return gameOptions.cellSize * this.engine.getColumns();
     }
 
-    _refreshPlayersTexts() {
-        this.myPlayerText.text = "My color is " + mode.getPlayer();
+    _refreshInfoText() {
         if (this.engine.playingTeam != null) {
             this.infoText.text = "";
         } else {
@@ -792,7 +801,7 @@ class MainScene extends Phaser.Scene {
         this.engine.loadRules(info.rules.colorProtection, info.rules.withDice);
         this._drawField();
         this.engine.playingTeam = info.playing_team;
-        this._refreshPlayersTexts();
+        this._refreshInfoText();
         this.engine.setDiceValue(info.dice);
         this._drawDice();
         this._drawSkipTurn();
