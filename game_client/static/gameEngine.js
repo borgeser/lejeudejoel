@@ -35,8 +35,14 @@ export class GameEngine {
     loadBoard(cells, pawns, storage, cemetery) {
         this.gameArray = cells;
         this.gamePawns = pawns.map(row => row.map(pawn => pawn != null ? new Pawn(pawn) : null));
-        this.pawnsStorage = storage;
-        this.cemetery = cemetery;
+        this.pawnsStorage = {};
+        for (let key in storage) {
+            this.pawnsStorage[key] = storage[key].map(pawn => pawn != null ? new Pawn(pawn) : null);
+        }
+        this.cemetery = {};
+        for (let key in cemetery) {
+            this.cemetery[key] = cemetery[key].map(pawn => pawn != null ? new Pawn(pawn) : null);
+        }
     }
 
     loadRules(colorProtection, withDice) {
