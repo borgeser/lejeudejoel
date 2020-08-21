@@ -289,7 +289,7 @@ class MainScene extends Phaser.Scene {
         this._drawDice();
         this._drawCurrentPlayerArrow();
         this._drawSkipTurn();
-        this.currentPlayerText = this.add.bitmapText(
+        this.infoText = this.add.bitmapText(
             this._boardTotalOffset().x,
             gameOptions.padding.y,
             "font",
@@ -494,7 +494,7 @@ class MainScene extends Phaser.Scene {
     _endTurn() {
         if (this.engine.isGameFinished()) {
             const winner = this.engine.getWinningTeam();
-            this.currentPlayerText.text = "Player " + winner + ", you win!";
+            this.infoText.text = "Player " + winner + ", you win!";
             this._startVictoryAnimation(winner);
             return;
         }
@@ -559,9 +559,9 @@ class MainScene extends Phaser.Scene {
     _refreshPlayersTexts() {
         this.myPlayerText.text = "My color is " + mode.getPlayer();
         if (this.engine.playingTeam != null) {
-            this.currentPlayerText.text = "";
+            this.infoText.text = "";
         } else {
-            this.currentPlayerText.text = "Waiting for other player...";
+            this.infoText.text = "Waiting for other player...";
         }
     }
 
