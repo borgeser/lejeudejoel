@@ -777,6 +777,8 @@ class MainScene extends Phaser.Scene {
     }
 
     moveFinished(startRow, startCol, endRow, endCol) {
+        this._sendToCemetery(endRow, endCol);
+        this.engine.sendToCemetery(endRow, endCol);
         this._move(startRow, startCol, endRow, endCol);
         this.engine.move(startRow, startCol, endRow, endCol);
         this.engine.endTurn();
