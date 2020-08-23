@@ -1,6 +1,7 @@
 import {BitmapButton} from "./game-objects/bitmapButton.js";
 import {GameEngine} from "./gameEngine.js";
 import {SelectedPawn} from "./selectedPawn.js";
+import {MoveParser} from "./moveParser.js";
 
 const STATIC_ROOT = "/static/";
 
@@ -204,44 +205,15 @@ class RemoteMode {
     }
 
     onMove(startX, startY, endX, endY) {
-        this._send(JSON.stringify({
-            player: this.getPlayer(),
-            action: 'move',
-            details: {
-                before: {
-                    x: startX,
-                    y: startY
-                },
-                after: {
-                    x: endX,
-                    y: endY
-                }
-            }
-        }));
+        this._send(JSON.stringify(MoveParser.move(this.getPlayer(), startX, startY, endX, endY)));
     }
 
     onStorageMove(animalIndex, team, endX, endY) {
-        this._send(JSON.stringify({
-            player: this.getPlayer(),
-            action: 'storage_move',
-            details: {
-                before: {
-                    animalIndex: animalIndex,
-                    team: team
-                },
-                after: {
-                    x: endX,
-                    y: endY
-                }
-            }
-        }));
+        this._send(JSON.stringify(MoveParser.storageMove(this.getPlayer(), animalIndex, team, endX, endY)));
     }
 
     onSkip() {
-        this._send(JSON.stringify({
-            player: this.getPlayer(),
-            action: 'skip'
-        }));
+        this._send(JSON.stringify(MoveParser.skip(this.getPlayer())));
     }
 
     onBoardAsked() {
