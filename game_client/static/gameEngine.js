@@ -6,15 +6,19 @@ import {MoveGenerator} from "./moveGenerator.js";
 export class GameEngine {
 
     constructor(obj) {
+        // Const
         this.teams = obj.teams;
         this.rows = obj.rows;
         this.columns = obj.columns;
         this.items = obj.items;
         this.animals = obj.animals;
         this.animalsColors = obj.animalsColors;
-
-        this._dice = new Dice();
+        // Lazy init const
         this.gameArray = [];
+        this.colorProtection = null;
+        this.withDice = null;
+        // Var
+        this._dice = new Dice();
         this.gamePawns = [];
         this.pawnsStorage = {};
         this.cemetery = {};
@@ -22,6 +26,17 @@ export class GameEngine {
         this.selectedPawn = null;
         this.playingTeam = null;
         this.lastMove = null;
+    }
+
+    clone() {
+        const cloned = new GameEngine(this);
+        cloned.loadBoard(this.exportCells(), this.exportPawns(), this.exportStorage(), this.exportCemetery());
+        cloned.loadRules(this.colorProtection, this.withDice);
+        cloned._dice = this._dice != null ? new Dice(this._dice) : null; // fix fake dice
+        cloned.selectedPawn = this.selectedPawn != null ? new Pawn(this.selectedPawn) : null;
+        cloned.playingTeam = this.playingTeam;
+        cloned.lastMove = this.lastMove;
+        return cloned;
     }
 
     // generates the game board
