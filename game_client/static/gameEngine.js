@@ -1,5 +1,4 @@
 import {Dice} from "./dice.js";
-import {FakeDice} from "./fakeDice.js";
 import {Pawn} from "./pawn.js";
 import {MoveGenerator} from "./moveGenerator.js";
 
@@ -32,7 +31,7 @@ export class GameEngine {
         const cloned = new GameEngine(this);
         cloned.loadBoard(this.exportCells(), this.exportPawns(), this.exportStorage(), this.exportCemetery());
         cloned.loadRules(this.colorProtection, this.withDice);
-        cloned._dice = this._dice != null ? new Dice(this._dice) : null; // fix fake dice
+        cloned._dice = this._dice != null ? new Dice(this._dice) : null;
         cloned.selectedPawn = this.selectedPawn != null ? new Pawn(this.selectedPawn) : null;
         cloned.playingTeam = this.playingTeam;
         cloned.lastMove = this.lastMove;
@@ -64,7 +63,10 @@ export class GameEngine {
     loadRules(colorProtection, withDice) {
         this.colorProtection = colorProtection;
         this.withDice = withDice;
-        this._dice = withDice ? new Dice() : new FakeDice();
+        if (!withDice) {
+            this._dice.faces = [];
+            this._dice.value = -1;
+        }
     }
 
     exportCells() {
