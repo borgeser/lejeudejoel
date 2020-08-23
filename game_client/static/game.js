@@ -2,6 +2,7 @@ import {BitmapButton} from "./game-objects/bitmapButton.js";
 import {GameEngine} from "./gameEngine.js";
 import {SelectedPawn} from "./selectedPawn.js";
 import {MoveParser} from "./moveParser.js";
+import {AI} from "./ai/ai.js";
 
 const STATIC_ROOT = "/static/";
 
@@ -226,6 +227,50 @@ class RemoteMode {
     onBoardCreated() {
         this._sendBoard();
     }
+}
+
+class AIMode {
+    constructor(myTeam) {
+        this._myTeam = myTeam;
+    }
+
+    getPlayer() {
+        return this._myTeam;
+    }
+
+    isHost() {
+        return true;
+    }
+
+    isMultiScreen() {
+        return false;
+    }
+
+    // UI Events
+
+    onMove(startX, startY, endX, endY) {
+        const ai = new AI();
+        const movement = ai.bestNextMove(engine);
+        scene.movementFinished(movement);
+    }
+
+    onStorageMove(animalIndex, team, endX, endY) {
+        const ai = new AI();
+        const movement = ai.bestNextMove(engine);
+        scene.movementFinished(movement);
+    }
+
+    onSkip() {
+        const ai = new AI();
+        const movement = ai.bestNextMove(engine);
+        scene.movementFinished(movement);
+    }
+
+    onDiceRolled(color, player) {}
+
+    onBoardAsked() {}
+
+    onBoardCreated() {}
 }
 
 class MainScene extends Phaser.Scene {
@@ -801,6 +846,17 @@ class MainScene extends Phaser.Scene {
         this.engine.storageMove(animalIndex, team, endRow, endCol);
         this.engine.endTurn();
         this._endTurn();
+    }
+
+    movementFinished(movement) {
+        const details = movement.details;
+        if (movement.action === "storage_move") {
+            this.storageMoveFinished(details.before.animalIndex, details.before.team, details.after.x, details.after.y);
+        } else if (movement.action === "move") {
+            this.moveFinished(details.before.x, details.before.y, details.after.x, details.after.y);
+        } else if (movement.action === "skip") {
+            this.skipGranted();
+        }
     }
 
     skipGranted() {

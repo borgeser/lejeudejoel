@@ -271,6 +271,8 @@ export class GameEngine {
             this.storageMove(details.before.animalIndex, details.before.team, details.after.x, details.after.y);
         } else if (movement.action === "move") {
             this.move(details.before.x, details.before.y, details.after.x, details.after.y);
+        } else if (movement.action === "skip") {
+            // no-op
         }
     }
 
