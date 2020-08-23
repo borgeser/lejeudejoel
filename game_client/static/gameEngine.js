@@ -1,6 +1,7 @@
 import {Dice} from "./dice.js";
 import {FakeDice} from "./fakeDice.js";
 import {Pawn} from "./pawn.js";
+import {MoveGenerator} from "./moveGenerator.js";
 
 export class GameEngine {
 
@@ -279,30 +280,9 @@ export class GameEngine {
     }
 
     hasCurrentPlayerAPossibleMove() {
-        const currentColor = this._dice.value;
-        const team = this.playingTeam;
-        for (let i = 0; i < this.pawnsStorage[team].length; i++) {
-            const pawn = this.pawnsStorage[team][i];
-            if (this.canSelectStorage(i, team) && (currentColor === -1 || pawn.color === currentColor)) {
-                return true;
-            }
-        }
-        for (let i = 0; i < this.rows; i++) {
-            for (let j = 0; j < this.columns; j++) {
-                if (
-                    this.canSelect(i, j) &&
-                    (
-                        this.canMove(i, j, i-1, j) ||
-                        this.canMove(i, j, i+1, j) ||
-                        this.canMove(i, j, i, j-1) ||
-                        this.canMove(i, j, i, j+1)
-                    )
-                ) {
-                    return true;
-                }
-            }
-        }
-        return false
+        const generator = new MoveGenerator(this);
+        const movements = generator.allMovements();
+        return movements.length > 1;
     }
 
     isDiceRolled() {
