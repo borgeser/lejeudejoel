@@ -181,6 +181,10 @@ export class GameEngine {
         return this.pawnsStorage[team].filter(p => p != null).length;
     }
 
+    getTotalNumberOfPawns(team) {
+        return this.getNumberOfPawns(team) + this.getNumberInStorage(team);
+    }
+
     // returns true if the item at (row, column) is a valid pick
     validPick(row, column) {
         return row >= 0 && row < this.rows && column >= 0 && column < this.columns;
@@ -261,6 +265,15 @@ export class GameEngine {
         this.lastMove = {row: endRow, col: endCol};
     }
 
+    executeMovement(movement) {
+        const details = movement.details;
+        if (movement.action === "storage_move") {
+            this.storageMove(details.before.animalIndex, details.before.team, details.after.x, details.after.y);
+        } else if (movement.action === "move") {
+            this.move(details.before.x, details.before.y, details.after.x, details.after.y);
+        }
+    }
+
     sendToCemetery(row, col) {
         const pawn = this.gamePawns[row][col];
         if (pawn == null) {
@@ -313,9 +326,7 @@ export class GameEngine {
     getWinningTeam() {
         for (let index = 0; index < this.teams.length; index++) {
             const team = this.teams[index];
-            const pawnsOnBoard = this.getNumberOfPawns(team);
-            const pawnsOnStorage = this.getNumberInStorage(team);
-            if (pawnsOnBoard + pawnsOnStorage <= 2) {
+            if (this.getTotalNumberOfPawns(team) <= 2) {
                 const nextIndex = (index + 1) % this.teams.length;
                 return this.teams[nextIndex];
             }
