@@ -87,7 +87,7 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [os.environ.get('REDIS_URL')],
+            "hosts": [os.environ.get('HEROKU_REDIS_AMBER_URL')],
         },
     },
 }
