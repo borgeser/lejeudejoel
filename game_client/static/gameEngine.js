@@ -1,19 +1,23 @@
 import {Dice} from "./dice.js";
-import {FakeDice} from "./fakeDice.js";
 import {Pawn} from "./pawn.js";
+import {MoveGenerator} from "./moveGenerator.js";
 
 export class GameEngine {
 
     constructor(obj) {
+        // Const
         this.teams = obj.teams;
         this.rows = obj.rows;
         this.columns = obj.columns;
         this.items = obj.items;
         this.animals = obj.animals;
         this.animalsColors = obj.animalsColors;
-
-        this._dice = new Dice();
+        // Lazy init const
         this.gameArray = [];
+        this.colorProtection = null;
+        this.withDice = null;
+        // Var
+        this._dice = new Dice();
         this.gamePawns = [];
         this.pawnsStorage = {};
         this.cemetery = {};
@@ -21,6 +25,17 @@ export class GameEngine {
         this.selectedPawn = null;
         this.playingTeam = null;
         this.lastMove = null;
+    }
+
+    clone() {
+        const cloned = new GameEngine(this);
+        cloned.loadBoard(this.exportCells(), this.exportPawns(), this.exportStorage(), this.exportCemetery());
+        cloned.loadRules(this.colorProtection, this.withDice);
+        cloned._dice = this._dice != null ? new Dice(this._dice) : null;
+        cloned.selectedPawn = this.selectedPawn != null ? new Pawn(this.selectedPawn) : null;
+        cloned.playingTeam = this.playingTeam;
+        cloned.lastMove = this.lastMove;
+        return cloned;
     }
 
     // generates the game board
@@ -48,7 +63,10 @@ export class GameEngine {
     loadRules(colorProtection, withDice) {
         this.colorProtection = colorProtection;
         this.withDice = withDice;
-        this._dice = withDice ? new Dice() : new FakeDice();
+        if (!withDice) {
+            this._dice.faces = [];
+            this._dice.value = -1;
+        }
     }
 
     exportCells() {
@@ -163,6 +181,10 @@ export class GameEngine {
         return this.pawnsStorage[team].filter(p => p != null).length;
     }
 
+    getTotalNumberOfPawns(team) {
+        return this.getNumberOfPawns(team) + this.getNumberInStorage(team);
+    }
+
     // returns true if the item at (row, column) is a valid pick
     validPick(row, column) {
         return row >= 0 && row < this.rows && column >= 0 && column < this.columns;
@@ -243,6 +265,17 @@ export class GameEngine {
         this.lastMove = {row: endRow, col: endCol};
     }
 
+    executeMovement(movement) {
+        const details = movement.details;
+        if (movement.action === "storage_move") {
+            this.storageMove(details.before.animalIndex, details.before.team, details.after.x, details.after.y);
+        } else if (movement.action === "move") {
+            this.move(details.before.x, details.before.y, details.after.x, details.after.y);
+        } else if (movement.action === "skip") {
+            // no-op
+        }
+    }
+
     sendToCemetery(row, col) {
         const pawn = this.gamePawns[row][col];
         if (pawn == null) {
@@ -279,30 +312,9 @@ export class GameEngine {
     }
 
     hasCurrentPlayerAPossibleMove() {
-        const currentColor = this._dice.value;
-        const team = this.playingTeam;
-        for (let i = 0; i < this.pawnsStorage[team].length; i++) {
-            const pawn = this.pawnsStorage[team][i];
-            if (this.canSelectStorage(i, team) && (currentColor === -1 || pawn.color === currentColor)) {
-                return true;
-            }
-        }
-        for (let i = 0; i < this.rows; i++) {
-            for (let j = 0; j < this.columns; j++) {
-                if (
-                    this.canSelect(i, j) &&
-                    (
-                        this.canMove(i, j, i-1, j) ||
-                        this.canMove(i, j, i+1, j) ||
-                        this.canMove(i, j, i, j-1) ||
-                        this.canMove(i, j, i, j+1)
-                    )
-                ) {
-                    return true;
-                }
-            }
-        }
-        return false
+        const generator = new MoveGenerator(this);
+        const movements = generator.allMovements();
+        return movements.length > 1;
     }
 
     isDiceRolled() {
@@ -316,9 +328,7 @@ export class GameEngine {
     getWinningTeam() {
         for (let index = 0; index < this.teams.length; index++) {
             const team = this.teams[index];
-            const pawnsOnBoard = this.getNumberOfPawns(team);
-            const pawnsOnStorage = this.getNumberInStorage(team);
-            if (pawnsOnBoard + pawnsOnStorage <= 2) {
+            if (this.getTotalNumberOfPawns(team) <= 2) {
                 const nextIndex = (index + 1) % this.teams.length;
                 return this.teams[nextIndex];
             }

@@ -1,7 +1,7 @@
 export class Dice {
-    constructor() {
-        this.faces = [-1, 0, 1, 2, 3, 4];
-        this.value = null;
+    constructor(params={value: null, faces: [-1, 0, 1, 2, 3, 4]}) {
+        this.value = params.value;
+        this.faces = params.faces;
     }
 
     roll() {
